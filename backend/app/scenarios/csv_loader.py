@@ -146,6 +146,8 @@ def load_dataset(
                         "appeal_has_material_new_evidence": row["appeal_has_material_new_evidence"],
                         "oracle_reason": row["oracle_reason"],
                         "failure_injected": row["failure_injected"],
+                        "hardening_level": row["hardening_level"],
+                        "regression_source": row["regression_source"],
                     },
                 )
             )

@@ -5,4 +5,6 @@ Permanent persistence and continuous re-execution of historical failures as regr
 Ensures previously diagnosed behavioral failures never silently recur in candidate agent versions.
 """
 
-__all__ = []
+from app.regression.engine import register_regression_test, run_regression_suite
+
+__all__ = ["register_regression_test", "run_regression_suite"]

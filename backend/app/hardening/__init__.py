@@ -8,4 +8,6 @@ Level 3: ZIP + name + narrative style variation
 Level 4: multiple proxies + incomplete evidence
 """
 
-__all__ = []
+from app.hardening.engine import run_hardening_ladder
+
+__all__ = ["run_hardening_ladder"]

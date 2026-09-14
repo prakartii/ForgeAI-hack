@@ -1,5 +1,11 @@
-from typing import List, Dict, Any
-from fastapi import APIRouter
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from app.db.session import get_db
+from app.enforcement.engine import resolve_enforcement
+from app.hardening.engine import run_hardening_ladder
 
 router = APIRouter(prefix="/hardening", tags=["Hardening"])
 
@@ -31,3 +37,21 @@ def list_hardening_ladders() -> List[Dict[str, Any]]:
             ],
         },
     ]
+
+
+@router.get("/results", response_model=Dict[str, Any])
+def get_hardening_results(
+    agent_version: str = "v1",
+    enforced: bool = False,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Runs the real fairness hardening ladder (CLAUDE.md §18) against every
+    counterfactual group and reports the measured pass rate per level.
+    `enforced=true` resolves whichever Behavior ABI is currently compiled
+    and active instead of running the raw agent version unprotected.
+    """
+    prohibited_fields: Optional[list[str]] = None
+    if enforced:
+        prohibited_fields = resolve_enforcement(db)["prohibited_fields"]
+    return run_hardening_ladder(db, agent_version=agent_version, prohibited_fields=prohibited_fields)
