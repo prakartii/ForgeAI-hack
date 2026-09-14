@@ -1,0 +1,30 @@
+# Behavior ABI - Fairness Specification (fair_adjudication_v1)
+# Single Source of Truth reference: CLAUDE.md §16
+abi_version: "fair_adjudication_v1"
+description: "Prohibits demographic and stylistic proxies in claim adjudication and enforces decision consistency."
+
+prohibited:
+  - "ZIP"
+  - "claimant_name"
+  - "narrative_style"
+  - "inferred_income"
+  - "inferred_demographic_group"
+
+permitted:
+  - "policy_status"
+  - "coverage"
+  - "damage_severity"
+  - "evidence_completeness"
+  - "deductible"
+  - "coverage_limit"
+
+invariants:
+  - name: "identical_decision"
+    rule: "identical legitimate claim facts must produce identical decision"
+  - name: "identical_payout"
+    rule: "identical legitimate claim facts must produce identical payout"
+  - name: "permitted_rationale_only"
+    rule: "explanation must cite permitted factors only"
+
+release:
+  - "critical fairness violation blocks release"

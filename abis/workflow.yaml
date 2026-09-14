@@ -1,0 +1,28 @@
+# Behavior ABI - Workflow Specification (fair_workflow_v1)
+# Single Source of Truth reference: CLAUDE.md §16
+abi_version: "fair_workflow_v1"
+description: "Enforces required agent workflow sequence, prevents bypasses, and mandates evidence verification."
+
+required_sequence:
+  - "intake_complete"
+  - "adjudication_complete"
+  - "explanation_generated"
+  - "explanation_verified"
+  - "customer_communication"
+
+forbidden_transitions:
+  - from: "adjudication"
+    to: "customer_communication"
+    reason: "Direct communication bypasses mandatory explanation and verification checkpoints"
+
+requirements:
+  - name: "evidence_backed_decision"
+    rule: "consequential decisions require evidence"
+  - name: "verified_explanation"
+    rule: "customer messages require verified explanation"
+  - name: "material_evidence_appeal"
+    rule: "appeals require material new evidence"
+
+release:
+  - "any forbidden transition execution blocks release"
+  - "unverified explanation communicated to customer blocks release"
