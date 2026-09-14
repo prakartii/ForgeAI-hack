@@ -69,7 +69,7 @@ failurefoundry/
 │   │   ├── prism/                # PRISM SDK integration client (isolated)
 │   │   ├── metrics/              # Ground-truth deterministic metrics (isolated)
 │   │   └── gates/                # Binary PASS/BLOCKED release gate (isolated)
-│   ├── tests/                    # Backend pytest suite (22 tests)
+│   ├── tests/                    # Backend pytest suite (90 tests)
 │   ├── requirements.txt          # Python dependencies
 │   └── pyproject.toml            # Project build metadata
 │
@@ -101,23 +101,33 @@ failurefoundry/
 │   └── workflow.yaml             # fair_workflow_v1 Behavior ABI
 │
 └── scripts/
-    ├── run_backend.bat           # Launch backend server
-    └── run_frontend.bat          # Launch frontend dev server
+    ├── run_backend.bat           # Launch backend server (Windows)
+    ├── run_frontend.bat          # Launch frontend dev server (Windows)
+    ├── load_demo_data.py         # Load the FairClaim India dataset + oracle check
+    └── run_demo.py               # One-command, full-lifecycle demo (§27/§30)
 ```
 
 ---
 
-## 4. Phase 1 Implementation Status
+## 4. Implementation Status — all 13 phases complete
 
-✅ **Backend**: FastAPI + Pydantic v2 + SQLAlchemy + SQLite + Neo4j driver initialized.
-✅ **Health Endpoint**: `GET /health` returns real application, environment, SQLite, and Neo4j status.
-✅ **API Namespaces**: `/api/agents`, `/api/scenarios`, `/api/runs`, `/api/traces`, `/api/failures`, `/api/prism`, `/api/abis`, `/api/mutations`, `/api/hardening`, `/api/regressions`, `/api/metrics`, `/api/gates`, `/api/graph`.
-✅ **Database (Polyglot)**: SQLite initialized as primary system of record with all 17 models; Neo4j integrated as the graph and causal lineage projection layer.
-✅ **Pydantic Schemas**: 17 domain schemas + complete `TraceEnvelope` complying with CLAUDE.md §9.
-✅ **Architectural Boundaries**: 12 isolated subsystems under `backend/app/` with clear architectural contracts.
-✅ **Frontend**: React + Tailwind CSS shell with Sidebar, Header, LifecycleStepper, live backend HealthBadge (SQLite + Neo4j), and 10 primary views.
-✅ **Live Connectivity**: Frontend fetches real status from `GET /health` and displays backend, SQLite, and Neo4j status live.
-✅ **Testing**: 26 backend automated tests covering health, database initialization, Neo4j client fallback, configuration, API routes, and schemas.
+| Phase | Status | Notes |
+|---|---|---|
+| 1. Project skeleton | ✅ | FastAPI + Pydantic v2 + SQLAlchemy + SQLite + Neo4j driver, 17 models/schemas |
+| 2. Synthetic claims environment | ✅ | 2,500-claim India multimodal dataset + 1,512 images loaded; deterministic oracle validated, 0 mismatches |
+| 3+4. Agent runtime & traces | ✅ | Intake/Adjudication/Explainability/Appeals, common `TraceRecorder`, real `WorkflowStateMachine` |
+| 5. PRISM integration | ✅ | Real `prismtrace` SDK (`blockconvey-monitor`); honestly reports `not_configured` without credentials |
+| 6. Failure detection | ✅ | Fairness / workflow / evidence / decision-correctness detectors over real agent output |
+| 7+8. Behavior ABI + enforcement | ✅ | Compiles `abis/*.yaml` into executable `ABIRule` rows; proven before/after context-inspection test |
+| 9+10. Hardening + regression | ✅ | L1-L4 challenge ladder over all 25 fairness groups; regression suite catches recurrence both ways |
+| 11. Metrics + release gate | ✅ | 8-clause gate, PASS/BLOCKED from real computed metrics — never asserted |
+| 12. Dashboard | ✅ | All 10 views wired to live backend actions (load data, scan, compile, harden, regress, gate) |
+| 13. Demo script | ✅ | `scripts/run_demo.py` — one command, no server needed |
+
+Backend test suite: **90 passing** (`pytest backend/tests`). No PRISM account is configured in this
+environment, so the release gate legitimately reports `BLOCKED` on the `prism_evidence` clause
+(and, over the full dataset, a genuine ~2% `evidence_completeness` gap from the Explainability
+agent's injected citation failures) — per CLAUDE.md §31, this is never faked into a PASS.
 
 ---
 
@@ -176,7 +186,23 @@ failurefoundry/
 
 ---
 
-## 6. URLs
+## 6. One-command demo
+
+Reproduces the full BUILD → ATTACK → PRISM OBSERVE → EVALUATE → DIAGNOSE →
+COMPILE BEHAVIOR ABI → ENFORCE → FIX/HARDEN → PRISM PROVE → REGRESSION TEST
+→ RELEASE GATE lifecycle end to end, with no server or browser required:
+
+```bash
+cd backend && python ../scripts/run_demo.py
+```
+
+It prints the v1 fairness-bug reproduction on a real counterfactual group,
+the exact before/after Adjudication context diff once the fairness ABI is
+enforced, the hardening ladder's per-level pass rate, real v1-vs-v2
+metrics, the regression suite result, and the release gate's PASS/BLOCKED
+verdict with every clause's real value.
+
+## 7. URLs
 - **Backend API**: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 - **Health Check**: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
 - **Interactive Swagger Docs**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
