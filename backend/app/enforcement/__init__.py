@@ -7,4 +7,18 @@ Translates compiled Behavior ABIs into runtime mechanisms:
 - Evidence requirement gates before decision dissemination.
 """
 
-__all__ = []
+from app.enforcement.engine import (
+    EnforcementDecision,
+    resolve_enforcement,
+    resolve_fairness_enforcement,
+    resolve_workflow_enforcement,
+)
+from app.enforcement.runner import run_claim_with_enforcement
+
+__all__ = [
+    "EnforcementDecision",
+    "resolve_enforcement",
+    "resolve_fairness_enforcement",
+    "resolve_workflow_enforcement",
+    "run_claim_with_enforcement",
+]
