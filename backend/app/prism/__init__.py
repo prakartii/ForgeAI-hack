@@ -9,4 +9,6 @@ This module houses the client adapter for the official PRISM SDK (blockconvey-mo
 and HTTP ingestion. It must remain strictly decoupled from FailureFoundry core business logic.
 """
 
-__all__ = []
+from app.prism.client import PrismClient, get_prism_client
+
+__all__ = ["PrismClient", "get_prism_client"]
