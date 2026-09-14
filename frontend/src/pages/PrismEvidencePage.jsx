@@ -1,18 +1,49 @@
 import React, { useEffect, useState } from 'react';
-import { Eye } from 'lucide-react';
-import { fetchPrismStatus, fetchRuns } from '../services/api';
-import { Badge, Card } from '../components/ui';
+import { Eye, UploadCloud, FileSearch } from 'lucide-react';
+import { fetchPrismEvidence, fetchPrismStatus, fetchRuns, submitRunToPrism } from '../services/api';
+import { ActionButton, Badge, Card, ErrorNote } from '../components/ui';
 
 export function PrismEvidencePage() {
   const [prismStatus, setPrismStatus] = useState(null);
   const [runs, setRuns] = useState([]);
+  const [busyRunId, setBusyRunId] = useState(null);
+  const [evidenceByRun, setEvidenceByRun] = useState({});
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const load = () => {
     fetchPrismStatus().then(setPrismStatus).catch(() => null);
     fetchRuns().then(setRuns).catch(() => null);
-  }, []);
+  };
+
+  useEffect(load, []);
 
   const configured = prismStatus?.status === 'configured';
+
+  const handleSubmit = async (runId) => {
+    setBusyRunId(runId);
+    try {
+      await submitRunToPrism(runId);
+      setError(null);
+      load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyRunId(null);
+    }
+  };
+
+  const handleFetchEvidence = async (runId) => {
+    setBusyRunId(runId);
+    try {
+      const evidence = await fetchPrismEvidence(runId);
+      setEvidenceByRun((prev) => ({ ...prev, [runId]: evidence }));
+      setError(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyRunId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -24,7 +55,7 @@ export function PrismEvidencePage() {
       <Card title="Integration status" icon={Eye}>
         <div className="flex items-center justify-between border-b border-line pb-4 mb-4">
           <div>
-            <p className="text-[12px] text-ink-faint font-mono">{prismStatus?.base_url || 'https://api.blockconvey.com'}</p>
+            <p className="text-[12px] text-ink-faint font-mono">{prismStatus?.base_url || 'https://prism.blockconvey.com'}</p>
             <p className="text-[13px] text-ink-soft mt-1">{prismStatus?.message}</p>
           </div>
           <Badge tone={configured ? 'emerald' : 'amber'}>{configured ? 'Configured' : 'Not configured'}</Badge>
@@ -40,10 +71,13 @@ export function PrismEvidencePage() {
 
       <Card title="Run to PRISM session correlation" tag="agent_runs.prism_session_id" noPadding>
         <p className="text-[13px] text-ink-soft p-5 pb-0">
-          Every agent run carries a <code className="font-mono text-[12px]">prism_session_id</code> once its trace is submitted
-          to PRISM as a trajectory. With no PRISM credentials configured here, this column is honestly
-          empty rather than a placeholder score.
+          Every agent run can be submitted to PRISM as a trajectory, which returns a real{' '}
+          <code className="font-mono text-[12px]">prism_session_id</code>.{' '}
+          {configured
+            ? 'PRISM is configured — submit a run below and fetch its evaluator result.'
+            : 'With no PRISM credentials configured here, this stays honestly empty rather than a placeholder score.'}
         </p>
+        <ErrorNote message={error} />
         <div className="overflow-x-auto mt-4">
           <table className="w-full text-[13px]">
             <thead>
@@ -51,22 +85,48 @@ export function PrismEvidencePage() {
                 <th className="py-2 pl-5 pr-4 font-normal">Run ID</th>
                 <th className="py-2 pr-4 font-normal">Claim</th>
                 <th className="py-2 pr-4 font-normal">Agent</th>
-                <th className="py-2 pr-5 font-normal">PRISM session</th>
+                <th className="py-2 pr-4 font-normal">PRISM session</th>
+                <th className="py-2 pr-5 font-normal">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
               {runs.slice(0, 15).map((run) => (
-                <tr key={run.run_id}>
-                  <td className="py-2 pl-5 pr-4 font-mono">{run.run_id}</td>
-                  <td className="py-2 pr-4 font-mono">{run.claim_id}</td>
-                  <td className="py-2 pr-4">{run.agent_name}</td>
-                  <td className="py-2 pr-5 font-mono text-ink-faint">
-                    {run.prism_session_id || 'unavailable'}
-                  </td>
-                </tr>
+                <React.Fragment key={run.run_id}>
+                  <tr>
+                    <td className="py-2 pl-5 pr-4 font-mono">{run.run_id}</td>
+                    <td className="py-2 pr-4 font-mono">{run.claim_id}</td>
+                    <td className="py-2 pr-4">{run.agent_name}</td>
+                    <td className="py-2 pr-4 font-mono text-ink-faint">
+                      {run.prism_session_id || 'unavailable'}
+                    </td>
+                    <td className="py-2 pr-5">
+                      {configured && (
+                        <div className="flex gap-2">
+                          <ActionButton variant="secondary" loading={busyRunId === run.run_id} onClick={() => handleSubmit(run.run_id)}>
+                            <UploadCloud className="w-3 h-3" /> Submit
+                          </ActionButton>
+                          {run.prism_session_id && (
+                            <ActionButton variant="secondary" loading={busyRunId === run.run_id} onClick={() => handleFetchEvidence(run.run_id)}>
+                              <FileSearch className="w-3 h-3" /> Fetch evidence
+                            </ActionButton>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                  {evidenceByRun[run.run_id] && (
+                    <tr>
+                      <td colSpan={5} className="pb-3 pl-5 pr-5">
+                        <pre className="bg-paper-sunk border border-line rounded p-3 overflow-x-auto text-[11px] font-mono leading-relaxed">
+                          {JSON.stringify(evidenceByRun[run.run_id], null, 2)}
+                        </pre>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
               {runs.length === 0 && (
-                <tr><td colSpan={4} className="py-6 text-center text-ink-faint">No runs yet — execute a claim from Agent Runs.</td></tr>
+                <tr><td colSpan={5} className="py-6 text-center text-ink-faint">No runs yet — execute a claim from Agent Runs.</td></tr>
               )}
             </tbody>
           </table>

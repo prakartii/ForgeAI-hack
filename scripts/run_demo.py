@@ -83,8 +83,33 @@ def main() -> int:
 
     # --- PRISM OBSERVE ---
     header("STAGE 3/11 · PRISM OBSERVE — evidence capture")
-    prism_status = get_prism_client().status()
+    prism_client = get_prism_client()
+    prism_status = prism_client.status()
     print(f"PRISM status: {prism_status['status']} — {prism_status['message']}")
+
+    if prism_status["status"] == "configured":
+        from app.agents.orchestrator import run_claim_pipeline
+        from app.models.trace import AgentRunModel, TraceEventModel
+
+        observed_claim, observed_policy = claim_and_policy(db, variant_ids[0])
+        run_claim_pipeline(db, observed_claim, observed_policy, agent_version="v1",
+                            scenario_id=variant_ids[0], counterfactual_group="CFG_001")
+        latest_run = (
+            db.query(AgentRunModel)
+            .filter_by(claim_id=variant_ids[0])
+            .order_by(AgentRunModel.id.desc())
+            .first()
+        )
+        events = db.query(TraceEventModel).filter_by(run_id=latest_run.run_id).all()
+        trajectory_id = prism_client.submit_agent_run(latest_run, events)
+        if trajectory_id:
+            latest_run.prism_session_id = trajectory_id
+            db.commit()
+            print(f"Submitted {latest_run.agent_name} run for {variant_ids[0]} -> PRISM trajectory {trajectory_id}")
+            evaluation = prism_client.fetch_evaluation(trajectory_id)
+            print(f"PRISM evaluation: {evaluation}")
+        else:
+            print("PRISM submission did not return a trajectory id (see stderr for the SDK's own warning).")
 
     # --- EVALUATE / DIAGNOSE ---
     header("STAGE 4-5/11 · EVALUATE & DIAGNOSE — failure detection engine")
