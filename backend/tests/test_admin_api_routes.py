@@ -77,3 +77,12 @@ def test_graph_causal_endpoint_falls_back_to_sqlite(client):
     data = response.json()
     assert data["source"] == "sqlite_fallback"
     assert len(data["nodes"]) >= 3
+
+
+def test_execute_claim_pipeline_endpoint(client):
+    client.post("/api/scenarios/load")
+    response = client.post("/api/runs/execute?claim_id=IMG_0002&agent_version=v2&enforced=true")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "COMPLETED"
+    assert data["workflow_state"]["explanation_verified"] is True
