@@ -7,4 +7,19 @@ Detects behavioral failures:
 - Evidence: missing citations, non-existent policy clauses, contradictory explanations.
 """
 
-__all__ = []
+from app.failures.detectors import (
+    detect_decision_correctness_failure,
+    detect_evidence_failure,
+    detect_fairness_failure,
+    detect_workflow_failure,
+)
+from app.failures.scanner import scan_claims, scan_fairness_groups
+
+__all__ = [
+    "detect_decision_correctness_failure",
+    "detect_evidence_failure",
+    "detect_fairness_failure",
+    "detect_workflow_failure",
+    "scan_claims",
+    "scan_fairness_groups",
+]

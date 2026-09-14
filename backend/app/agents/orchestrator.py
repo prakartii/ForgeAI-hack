@@ -21,7 +21,7 @@ from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
-from app.agents.adjudication import PROXY_FIELDS, run_adjudication
+from app.agents.adjudication import PROXY_FIELDS, build_adjudication_context, run_adjudication
 from app.agents.appeals import run_appeals
 from app.agents.explainability import run_explainability
 from app.agents.intake import run_intake
@@ -74,7 +74,18 @@ def run_claim_pipeline(
     wf.transition("ADJUDICATION")
 
     with trace("adjudication") as tr:
-        adjudication_result = run_adjudication(claim, policy, prohibited_fields=prohibited_fields)
+        if intake_result["action"] not in ("STRUCTURE_CLAIM", "STRUCTURE_CLAIM_FROM_DOCUMENTS"):
+            # Intake could not structure the claim (unresolved/contradictory/missing
+            # evidence) -- Adjudication must escalate rather than guess a payout.
+            adjudication_result = {
+                "decision": "ESCALATE",
+                "payout": 0.0,
+                "reason": intake_result["action"],
+                "confidence": 0.5,
+                "context_used": build_adjudication_context(claim, policy, prohibited_fields=prohibited_fields),
+            }
+        else:
+            adjudication_result = run_adjudication(claim, policy, prohibited_fields=prohibited_fields)
         tr.record_event(
             input_payload={"context_keys": sorted(adjudication_result["context_used"].keys())},
             output_payload={k: v for k, v in adjudication_result.items() if k != "context_used"},
