@@ -12,4 +12,6 @@ Computes deterministic, ground-truth-derived metrics from real execution runs:
 - Challenge robustness
 """
 
-__all__ = []
+from app.metrics.engine import compute_metrics
+
+__all__ = ["compute_metrics"]

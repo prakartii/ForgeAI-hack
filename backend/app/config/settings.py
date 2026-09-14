@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     prism_api_key: Optional[str] = None
     prism_project_id: Optional[str] = None
     prism_base_url: str = "https://api.blockconvey.com"
+    # CLAUDE.md §23 requires PRISM evidence for a PASS. Kept True by default
+    # (honest behavior: no credentials configured -> gate legitimately
+    # BLOCKS); a team without PRISM access yet can set this False in .env
+    # to explicitly acknowledge the gap rather than have it silently skipped.
+    prism_evidence_required: bool = True
 
 
 @lru_cache()

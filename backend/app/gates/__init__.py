@@ -6,4 +6,6 @@ Evaluates critical ABI violations, fairness thresholds, prohibited factor absenc
 workflow step completion, evidence checks, regression passes, and backing PRISM evidence.
 """
 
-__all__ = []
+from app.gates.engine import GateCheck, evaluate_release_gate
+
+__all__ = ["GateCheck", "evaluate_release_gate"]
