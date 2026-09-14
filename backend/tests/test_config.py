@@ -10,4 +10,5 @@ def test_settings_load():
     assert settings.host == "127.0.0.1"
     assert settings.port == 8000
     assert "failurefoundry.db" in settings.database_url
-    assert settings.prism_base_url == "https://api.blockconvey.com"
+    # CLAUDE.md §21: verified host is prism.blockconvey.com, not api.blockconvey.com
+    assert settings.prism_base_url == "https://prism.blockconvey.com"
