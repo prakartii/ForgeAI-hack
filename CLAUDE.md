@@ -730,51 +730,100 @@ Every run must record: `agent_version`, `abi_version`, `mutation_id`
 
 ## 21. PRISM integration
 
-Use the official PRISM SDK (`blockconvey-monitor`, `pip install
-blockconvey-monitor`) or another documented HTTP integration actually
-available to your account. **Do not invent undocumented PRISM APIs,
-evaluator endpoints, or field names.** If a capability you want isn't
-documented for your account, implement around what is verified and
-available rather than fabricating a result.
+Verified twice: once against the live docs at blockconvey.com/docs, then
+again by actually running `pip install blockconvey-monitor` and reading
+the installed package's source (`inspect.signature` on its real classes/
+methods) — not guessed, not paraphrased from docs prose. That second
+pass corrected the first: an earlier draft of this section claimed
+`blockconvey-monitor` doesn't exist and that only framework-specific
+handlers (LangChain/LangGraph) are available. Both claims were wrong.
+Facts below are the ones actually confirmed by installing the package.
 
-Known-real SDK usage pattern (confirm current signature against the
-installed package/docs before relying on it, since Block Convey's docs
-are not fully public):
+**Sign up:** prism.blockconvey.com/signup (creates an org + first
+project). Get `PRISM_PROJECT_ID` (uuid) and `PRISM_API_KEY` (format
+`pt-sk-...`, shown once) from the dashboard. Host is fixed:
+`https://prism.blockconvey.com` (**not** `api.blockconvey.com` — that
+wrong host was in this file and in settings.py's default; both are now
+fixed). Store all three in `.env`, never commit them.
+
+**Package**: `blockconvey-monitor>=0.3.1` (`pip install
+blockconvey-monitor`) installs the importable module `prismtrace`. A
+newer alias of the same project is published as `prismtrace-sdk`
+(currently 0.4.3) — either installs the same `prismtrace` module; stick
+with whichever one is already pinned in requirements.txt rather than
+switching (§33 rule 3: don't rewrite working modules unnecessarily).
+
+**Generic client (this is what our plain-Python agent runtime uses —
+no LangChain/LangGraph needed, §5):**
 
 ```python
-from blockconvey import monitor
+from prismtrace import PRISMtrace
 
-prism = monitor(api_key=..., project_id=...)
+client = PRISMtrace(api_key=..., host="https://prism.blockconvey.com", project_id=...)
 
-prism.trace(
-    input_messages=[...],
-    output_message=...,
-    model=...,
-    latency_ms=...,
-    agent_name=...,
+# One-shot LLM call trace (fire-and-forget, backgrounded):
+client.trace_llm(model=..., input_messages=[...], output=..., latency_ms=...)
+
+# A full multi-step AgentRun as one trajectory (steps = list of dicts) --
+# this is the one our own integration (backend/app/prism/client.py) uses,
+# since it maps naturally onto AgentRun + its TraceEvents:
+result = client.submit_trajectory(
+    steps=[...], agent_name=..., conversation_id=<claim_id>, request_id=<run_id>,
 )
+trajectory_id = result.get("id") or result.get("trajectory_id")
+
+# Fetch PRISM's own evaluator result for a submitted trajectory:
+evaluation = client.get_trajectory_evaluation(trajectory_id)
 ```
 
-A decorator form and async form (`monitor`/`async_monitor`, `@traced`)
-and LangChain/LangGraph/OpenAI integration wrappers are also part of the
-published SDK — use whichever fits your agent runtime, and verify the
-exact parameter names against the installed package at build time.
+Also present on the installed client, confirmed via introspection:
+`get_trajectory`, `retrigger_evaluation`, and a `kb_*` knowledge-base
+family (`kb_upload`/`kb_search`/`kb_list_documents`/`kb_delete_document`)
+not mentioned in the public docs prose — available if a future need
+appears, not required for the MVP. Framework-specific handlers
+(`PRISMtraceCallbackHandler` for LangChain, `PRISMtraceLangGraphHandler`/
+`wrap_langgraph` for LangGraph, `install_litellm`) also exist in the
+package but don't apply to our stack.
 
-**Required where supported by your PRISM account:** traces, sessions,
-runs, evaluator results, failure evidence, root-cause/diagnostic
-evidence, before/after validation.
+Auth header the client sends internally: `x-prismtrace-key: pt-sk-...`
+(not a bearer token) to `POST {host}/api/traces` under the hood for
+`trace_llm`. Same idea for `submit_trajectory` against its own endpoint.
+
+**Reference implementation**: `backend/app/prism/client.py`
+(`PrismClient`) already does this correctly — gates every call on
+`is_configured` (both env vars set), returns `None` rather than
+fabricating a trajectory id or evaluation when PRISM isn't configured,
+and maps one FailureFoundry `AgentRun` + its `TraceEvent`s onto one
+PRISM trajectory (`conversation_id=claim_id`, `request_id=run_id`). Read
+it before writing a second PRISM call site.
+
+**What's real and available on the Free tier** (25,000 traces/month,
+14-day retention — budget trace volume; don't submit trajectories for
+the full synthetic claim population on every dev run, only the curated
+demo scenarios + hardening ladder): traces, trajectories, **Automatic
+Scoring** (customer-satisfaction 0–100, response-quality 0–100, intent
+label, `flagged_for_review` — this is our EVALUATE stage, free on every
+trace), and **Root Cause Analysis** (clusters failing traces into
+recurring problems with remediation suggestions — this is our DIAGNOSE
+stage evidence).
+
+**Builder-plan only, not Free — confirm which plan the team account has
+before assuming these are available:** Guardrails, the Evaluators Hub,
+expanded Model Inventory.
 
 **FailureFoundry owns (never PRISM):** scenarios, FailureFoundry-side
 metadata, the Behavior ABI itself, mutations, hardening, regression,
 local deterministic metrics, release gates.
 
-**If Developer 2 (see §19 of the architecture doc / §22 below) discovers
-mid-build that a specific PRISM capability referenced in this file isn't
-actually available on the team's account:** implement the integration
-around whatever verified capability *is* available (e.g. the PRISM
-dashboard/export, or a subset of the evaluator API), note the gap
-explicitly in code comments and the README, and do not fabricate the
-missing evidence. See §22, "must never be faked."
+**If a specific PRISM capability referenced in this file turns out not
+to be on the team's plan (e.g. Guardrails/Evaluators Hub on Free), or no
+credentials are configured yet:** `PrismClient.is_configured` already
+degrades every call to `None`/"not_configured" rather than fabricating
+evidence (CLAUDE.md §31), and `settings.prism_evidence_required` (env
+`PRISM_EVIDENCE_REQUIRED`, default `true`) lets the release gate either
+legitimately BLOCK on missing PRISM evidence or, if explicitly set
+`false`, evaluate on FailureFoundry's own criteria alone — never silently
+skip the requirement.
 
 ---
 

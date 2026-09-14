@@ -39,10 +39,14 @@ class Settings(BaseSettings):
     anthropic_api_key: Optional[str] = None
     gemini_api_key: Optional[str] = None
 
-    # PRISM Monitor Integration (Phase 5+)
-    prism_api_key: Optional[str] = None
-    prism_project_id: Optional[str] = None
-    prism_base_url: str = "https://api.blockconvey.com"
+    # PRISM Integration (Phase 5+). Package blockconvey-monitor>=0.3.1
+    # installs the `prismtrace` module (class prismtrace.PRISMtrace) --
+    # verified by installing it and reading its source, not guessed.
+    # Host confirmed against blockconvey.com/docs: prism.blockconvey.com,
+    # not api.blockconvey.com (the earlier default here was wrong).
+    prism_api_key: Optional[str] = None  # PRISM_API_KEY, format "pt-sk-..."
+    prism_project_id: Optional[str] = None  # PRISM_PROJECT_ID, a uuid
+    prism_base_url: str = "https://prism.blockconvey.com"
     # CLAUDE.md §23 requires PRISM evidence for a PASS. Kept True by default
     # (honest behavior: no credentials configured -> gate legitimately
     # BLOCKS); a team without PRISM access yet can set this False in .env
