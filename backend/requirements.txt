@@ -8,8 +8,9 @@ pydantic>=2.6.0,<3.0.0
 pydantic-settings>=2.2.0,<3.0.0
 python-dotenv>=1.0.1
 
-# Database
+# Database & Persistence (Polyglot: SQLite + Neo4j)
 sqlalchemy>=2.0.28,<3.0.0
+neo4j>=5.18.0,<6.0.0
 
 # Utilities
 pyyaml>=6.0.1

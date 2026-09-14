@@ -1,5 +1,5 @@
 import React from 'react';
-import { Activity, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Activity, CheckCircle2, AlertCircle, RefreshCw, GitFork } from 'lucide-react';
 
 export function HealthBadge({ health, loading, error, onRefresh }) {
   if (loading && !health) {
@@ -38,8 +38,13 @@ export function HealthBadge({ health, loading, error, onRefresh }) {
         <span className="font-semibold">Backend:</span>
         <span>{health.status}</span>
         <span className="text-emerald-400">|</span>
-        <span className="font-semibold">DB:</span>
+        <span className="font-semibold">SQLite:</span>
         <span>{health.database}</span>
+        <span className="text-emerald-400">|</span>
+        <span className="font-semibold">Neo4j:</span>
+        <span className={health.graph_database === 'connected' ? 'text-emerald-700 font-bold' : 'text-slate-500'}>
+          {health.graph_database || 'standby'}
+        </span>
         <span className="text-emerald-400">|</span>
         <span className="text-emerald-600 font-sans">v{health.version}</span>
       </div>

@@ -109,15 +109,15 @@ failurefoundry/
 
 ## 4. Phase 1 Implementation Status
 
-✅ **Backend**: FastAPI + Pydantic v2 + SQLAlchemy + SQLite initialized.
-✅ **Health Endpoint**: `GET /health` returns real application, environment, and database status.
-✅ **API Namespaces**: `/api/agents`, `/api/scenarios`, `/api/runs`, `/api/traces`, `/api/failures`, `/api/prism`, `/api/abis`, `/api/mutations`, `/api/hardening`, `/api/regressions`, `/api/metrics`, `/api/gates`.
-✅ **Database**: SQLite database initialized with all 17 models (`Policy`, `Claim`, `Document`, `Evidence`, `WorkflowState`, `AgentRun`, `TraceEvent`, `Scenario`, `CounterfactualPair`, `GroundTruth`, `Failure`, `BehaviorABI`, `ABIRule`, `Mutation`, `RegressionTest`, `EvaluationResult`, `ReleaseGateResult`).
+✅ **Backend**: FastAPI + Pydantic v2 + SQLAlchemy + SQLite + Neo4j driver initialized.
+✅ **Health Endpoint**: `GET /health` returns real application, environment, SQLite, and Neo4j status.
+✅ **API Namespaces**: `/api/agents`, `/api/scenarios`, `/api/runs`, `/api/traces`, `/api/failures`, `/api/prism`, `/api/abis`, `/api/mutations`, `/api/hardening`, `/api/regressions`, `/api/metrics`, `/api/gates`, `/api/graph`.
+✅ **Database (Polyglot)**: SQLite initialized as primary system of record with all 17 models; Neo4j integrated as the graph and causal lineage projection layer.
 ✅ **Pydantic Schemas**: 17 domain schemas + complete `TraceEnvelope` complying with CLAUDE.md §9.
 ✅ **Architectural Boundaries**: 12 isolated subsystems under `backend/app/` with clear architectural contracts.
-✅ **Frontend**: React + Tailwind CSS shell with Sidebar, Header, LifecycleStepper, live backend HealthBadge, and 10 primary views.
-✅ **Live Connectivity**: Frontend fetches real status from `GET /health` and displays backend & SQLite state live.
-✅ **Testing**: 22 backend automated tests covering health, database initialization, configuration, API routes, and schemas.
+✅ **Frontend**: React + Tailwind CSS shell with Sidebar, Header, LifecycleStepper, live backend HealthBadge (SQLite + Neo4j), and 10 primary views.
+✅ **Live Connectivity**: Frontend fetches real status from `GET /health` and displays backend, SQLite, and Neo4j status live.
+✅ **Testing**: 26 backend automated tests covering health, database initialization, Neo4j client fallback, configuration, API routes, and schemas.
 
 ---
 

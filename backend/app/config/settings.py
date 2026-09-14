@@ -27,8 +27,12 @@ class Settings(BaseSettings):
     backend_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
 
-    # Database
+    # Database (Polyglot: SQLite System of Record + Neo4j Graph Projection)
     database_url: str = "sqlite:///./failurefoundry.db"
+    neo4j_uri: Optional[str] = "bolt://localhost:7687"
+    neo4j_user: Optional[str] = "neo4j"
+    neo4j_password: Optional[str] = None
+    neo4j_database: Optional[str] = "neo4j"
 
     # LLM Providers (Phase 3+)
     openai_api_key: Optional[str] = None

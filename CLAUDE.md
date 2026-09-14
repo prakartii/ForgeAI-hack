@@ -1,4 +1,4 @@
-﻿# CLAUDE.md — FailureFoundry
+# CLAUDE.md — FailureFoundry
 
 This file is the single source of truth for building **FailureFoundry**. Any
 AI coding agent working in this repository must read this file in full
@@ -232,12 +232,16 @@ build.
 **Documents:**
 - PyMuPDF or another simple, reliable PDF extractor.
 
-**Database:**
-- SQLite for the MVP. (PostgreSQL is a future/production option, not
-  required for the hackathon.)
+**Database & Persistence (Polyglot Architecture):**
+- **SQLite:** Primary system of record for all tabular and transactional data:
+  synthetic policies, claims, documents, raw trace envelopes, prompt/response
+  payloads, evaluation metrics, and test obligations.
+- **Neo4j:** Graph and behavioral lineage layer for causal execution tracking,
+  multi-hop provenance, agent handoff DAGs, and failure-to-ABI dependency
+  trees. (SQLite remains authoritative system of record; Neo4j serves as the
+  relationship & lineage projection layer).
 
 **Explicitly NOT mandatory — only introduce if a real need appears:**
-- Neo4j
 - ChromaDB / vector DB
 - microservices
 - LangGraph
@@ -462,8 +466,12 @@ Each node is an event with a parent/preceding state. Edges carry: agent,
 timestamp, input/output references, PRISM trace/run ID, ABI version,
 validity/state.
 
-Storage: SQLite relational tables or JSON columns are sufficient. Do not
-stand up Neo4j for the MVP. Frontend: React Flow.
+Storage (Polyglot Persistence):
+- SQLite stores full trace event payloads, raw JSON envelopes, and audit logs.
+- Neo4j stores the causal execution DAG and behavioral lineage nodes
+  (:Claim, :Agent, :Event, :Decision, :Evidence, :Failure, :BehaviorABI) and
+  edges ([:HANDED_OFF_TO], [:CITED_EVIDENCE], [:COMPILED_INTO]).
+- Frontend: React Flow (renders workflow graphs from causal traces).
 
 ---
 

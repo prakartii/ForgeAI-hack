@@ -1,24 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { fetchAgents, fetchAbis, fetchPrismStatus } from '../services/api';
-import { Server, Shield, Layers, Eye, CheckCircle, Database, AlertCircle, Clock } from 'lucide-react';
+import { fetchAgents, fetchAbis, fetchPrismStatus, fetchGraphStatus } from '../services/api';
+import { Server, Shield, Layers, Eye, Database, Clock, GitFork } from 'lucide-react';
 
 export function OverviewPage({ health }) {
   const [agents, setAgents] = useState([]);
   const [abis, setAbis] = useState([]);
   const [prismStatus, setPrismStatus] = useState(null);
+  const [graphStatus, setGraphStatus] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [agentsData, abisData, prismData] = await Promise.all([
+        const [agentsData, abisData, prismData, graphData] = await Promise.all([
           fetchAgents().catch(() => []),
           fetchAbis().catch(() => []),
           fetchPrismStatus().catch(() => null),
+          fetchGraphStatus().catch(() => null),
         ]);
         setAgents(agentsData);
         setAbis(abisData);
         setPrismStatus(prismData);
+        setGraphStatus(graphData);
       } finally {
         setLoading(false);
       }
@@ -32,12 +35,12 @@ export function OverviewPage({ health }) {
       <div>
         <h2 className="text-xl font-bold tracking-tight text-slate-900">System Overview</h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Phase 1 Foundation: Project skeleton, runtime contracts, database, and health connection
+          Phase 1 Foundation: Project skeleton, polyglot persistence (SQLite + Neo4j), runtime contracts, and health connection
         </p>
       </div>
 
       {/* Primary Status Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Backend Connectivity */}
         <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-2">
@@ -61,16 +64,32 @@ export function OverviewPage({ health }) {
         {/* SQLite Database */}
         <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider">SQLite MVP DB</span>
+            <span className="text-xs font-mono font-semibold uppercase tracking-wider">SQLite (Primary)</span>
             <Database className="w-4 h-4 text-slate-400" />
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-xl font-bold text-slate-900 font-mono">
-              {health?.database === 'connected' ? 'CONNECTED' : 'DISCONNECTED'}
+              {health?.database === 'connected' ? 'CONNECTED' : 'STANDBY'}
             </span>
           </div>
           <p className="text-[11px] text-slate-500 mt-2">
-            17 Schema tables initialized
+            System of record (17 tables)
+          </p>
+        </div>
+
+        {/* Neo4j Graph Projection */}
+        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-mono font-semibold uppercase tracking-wider">Neo4j (Graph)</span>
+            <GitFork className="w-4 h-4 text-slate-400" />
+          </div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-bold text-slate-900 font-mono">
+              {(graphStatus?.status || health?.graph_database || 'standby').toUpperCase()}
+            </span>
+          </div>
+          <p className="text-[11px] text-slate-500 mt-2 truncate font-mono" title={graphStatus?.message}>
+            {graphStatus?.status === 'connected' ? 'Causal graph active' : 'Causal lineage projection'}
           </p>
         </div>
 
@@ -85,7 +104,7 @@ export function OverviewPage({ health }) {
               {abis.length} Active
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 mt-2 font-mono">
+          <p className="text-[11px] text-slate-500 mt-2 font-mono truncate">
             {abis.map(a => a.abi_version).join(', ') || 'Loading specs...'}
           </p>
         </div>
@@ -93,7 +112,7 @@ export function OverviewPage({ health }) {
         {/* PRISM Monitor Status */}
         <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider">PRISM Integration</span>
+            <span className="text-xs font-mono font-semibold uppercase tracking-wider">PRISM Monitor</span>
             <Eye className="w-4 h-4 text-slate-400" />
           </div>
           <div className="flex items-baseline gap-2">
@@ -145,35 +164,41 @@ export function OverviewPage({ health }) {
           <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-slate-600" />
-              <h3 className="text-sm font-semibold text-slate-900">Architectural Separation</h3>
+              <h3 className="text-sm font-semibold text-slate-900">Polyglot Persistence & Architecture</h3>
             </div>
             <span className="text-[11px] font-mono bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded">
-              CLAUDE.md §2 & §4
+              CLAUDE.md §5 & §10
             </span>
           </div>
-          <div className="p-5 space-y-4 text-xs">
-            <div className="p-3 bg-slate-50 rounded-md border border-slate-200">
+          <div className="p-5 space-y-3 text-xs">
+            <div className="p-2.5 bg-slate-50 rounded-md border border-slate-200">
               <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                PRISM Responsibility
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                SQLite: Primary System of Record
               </div>
-              <p className="text-slate-600 mt-1">
-                Observes traces/sessions, evaluates agent behavior, surfaces root causes, provides evidence, proves before/after improvement.
+              <p className="text-slate-600 mt-0.5">
+                Holds all authoritative transactional data, claim forms, policy documents, raw execution trace envelopes, and regression obligations.
               </p>
             </div>
 
-            <div className="p-3 bg-slate-50 rounded-md border border-slate-200">
+            <div className="p-2.5 bg-slate-50 rounded-md border border-slate-200">
               <div className="font-semibold text-slate-800 flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-sky-500"></span>
-                FailureFoundry Responsibility
+                Neo4j: Causal Execution & Lineage Graph
               </div>
-              <p className="text-slate-600 mt-1">
-                Generates scenarios, compiles diagnoses into Behavior ABIs, enforces runtime controls, hardens challenge ladders, runs regression tests, gates releases.
+              <p className="text-slate-600 mt-0.5">
+                Captures agent handoff DAGs, tool calls, multi-hop root-cause tracing, and the failure-to-ABI-to-release-gate dependency chain.
               </p>
             </div>
 
-            <div className="text-[11px] text-slate-500 italic">
-              Note: FailureFoundry never replaces PRISM; it operationalizes PRISM's findings into executable behavioral contracts.
+            <div className="p-2.5 bg-slate-50 rounded-md border border-slate-200">
+              <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
+                PRISM Observation & Evaluation
+              </div>
+              <p className="text-slate-600 mt-0.5">
+                Observes execution traces, computes evaluators, isolates failures, and proves before/after behavioral improvements.
+              </p>
             </div>
           </div>
         </div>

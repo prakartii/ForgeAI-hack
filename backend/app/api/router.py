@@ -12,6 +12,7 @@ from app.api.hardening import router as hardening_router
 from app.api.regressions import router as regressions_router
 from app.api.metrics import router as metrics_router
 from app.api.gates import router as gates_router
+from app.api.graph import router as graph_router
 
 # Master API Router mounted under /api
 api_router = APIRouter(prefix="/api")
@@ -28,5 +29,6 @@ api_router.include_router(hardening_router)
 api_router.include_router(regressions_router)
 api_router.include_router(metrics_router)
 api_router.include_router(gates_router)
+api_router.include_router(graph_router)
 
 __all__ = ["api_router", "health_router"]

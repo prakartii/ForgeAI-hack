@@ -58,6 +58,19 @@ export async function fetchPrismStatus() {
 }
 
 /**
+ * Fetch Neo4j graph connection status.
+ */
+export async function fetchGraphStatus() {
+  const response = await fetch(`${API_BASE_URL}/api/graph/status`, {
+    headers: { 'Accept': 'application/json' },
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch graph status: ${response.status}`);
+  }
+  return response.json();
+}
+
+/**
  * Fetch hardening challenge ladders.
  */
 export async function fetchHardeningLadders() {

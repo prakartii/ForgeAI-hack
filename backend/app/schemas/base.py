@@ -23,4 +23,5 @@ class HealthResponse(SchemaModel):
     version: str
     environment: str
     database: str
+    graph_database: Optional[str] = "standby"
     timestamp: datetime
