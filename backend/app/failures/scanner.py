@@ -57,6 +57,8 @@ def scan_claims(
     claim_ids: list[str],
     *,
     agent_version: str = "v1",
+    prohibited_fields: Optional[list[str]] = None,
+    workflow_enforce: Optional[bool] = None,
 ) -> dict[str, list[FailureModel]]:
     """
     Runs the full claim pipeline for each given claim id and applies the
@@ -67,7 +69,10 @@ def scan_claims(
 
     for claim_id in claim_ids:
         claim, policy = _claim_and_policy(db, claim_id)
-        result = run_claim_pipeline(db, claim, policy, agent_version=agent_version, scenario_id=claim_id)
+        result = run_claim_pipeline(
+            db, claim, policy, agent_version=agent_version, scenario_id=claim_id,
+            prohibited_fields=prohibited_fields, workflow_enforce=workflow_enforce,
+        )
 
         workflow_failure = detect_workflow_failure(db, claim_id, result, agent_version=agent_version)
         if workflow_failure:
