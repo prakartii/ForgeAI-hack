@@ -31,6 +31,13 @@ def get_causal_graph(
     TraceEvent rows (CLAUDE.md §10/§5: SQLite is the authoritative system
     of record, Neo4j only a relationship projection over it), rather than
     showing an empty graph for a claim that actually ran.
+
+    Each agent call gets its own AgentRun (CLAUDE.md §9: "one agent
+    execution = one run"), so a claim run through the pipeline multiple
+    times (e.g. once as v1, once as v2) has several separate causal
+    chains. Edges only connect an event to the very next event recorded
+    for the same agent_version, so re-running a claim never draws a
+    nonsensical edge from one execution attempt into a different one.
     """
     neo4j_result = client.get_causal_graph(claim_id)
     if neo4j_result.get("nodes"):
@@ -53,8 +60,12 @@ def get_causal_graph(
         }
         for e in events
     ]
-    edges = [
-        {"id": f"{events[i].event_id}->{events[i + 1].event_id}", "source": events[i].event_id, "target": events[i + 1].event_id}
-        for i in range(len(events) - 1)
-    ]
+    edges = []
+    last_event_by_version: dict[str, TraceEventModel] = {}
+    for event in events:
+        previous = last_event_by_version.get(event.agent_version)
+        if previous is not None:
+            edges.append({"id": f"{previous.event_id}->{event.event_id}", "source": previous.event_id, "target": event.event_id})
+        last_event_by_version[event.agent_version] = event
+
     return {"nodes": nodes, "edges": edges, "source": "sqlite_fallback" if events else "empty"}

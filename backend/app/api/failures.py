@@ -8,6 +8,7 @@ from app.enforcement.engine import resolve_enforcement
 from app.failures.scanner import scan_claims, scan_fairness_groups
 from app.models.domain import ClaimModel
 from app.models.failure import FailureModel
+from app.regression.engine import register_regression_test
 from app.schemas.failure import Failure
 
 router = APIRouter(prefix="/failures", tags=["Failures"])
@@ -55,6 +56,16 @@ def scan_for_failures(
         db, claim_ids, agent_version=agent_version,
         prohibited_fields=prohibited_fields, workflow_enforce=workflow_enforce,
     )
+
+    # CLAUDE.md §19: every discovered failure becomes a permanent regression
+    # obligation immediately, not only once someone remembers to add one.
+    abi_version = "fair_adjudication_v1" if fairness_failures else "fair_workflow_v1"
+    for failure in fairness_failures:
+        register_regression_test(db, failure, abi_version_introduced="fair_adjudication_v1")
+    for failure in other_failures["WORKFLOW"]:
+        register_regression_test(db, failure, abi_version_introduced="fair_workflow_v1")
+    for failure in other_failures["EVIDENCE"] + other_failures["DECISION_CORRECTNESS"]:
+        register_regression_test(db, failure, abi_version_introduced=abi_version)
 
     return {
         "fairness_failures": len(fairness_failures),

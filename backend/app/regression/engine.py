@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 from app.agents.orchestrator import run_claim_pipeline
 from app.agents.adjudication import run_adjudication
 from app.models.domain import ClaimModel, GroundTruthModel, PolicyModel
-from app.models.failure import FailureModel
 from app.models.evaluation import RegressionTestModel
+from app.models.failure import FailureModel
 from app.models.scenario import CounterfactualPairModel
 from app.traces.wrapper import new_id
 
@@ -104,6 +104,17 @@ def run_regression_suite(
                     )
 
         test.last_tested_version = candidate_version
+
+        # A regression test's source Failure is "resolved" exactly when the
+        # regression suite just confirmed the candidate version no longer
+        # reproduces it -- and un-resolved again if a later run regresses,
+        # so the release gate's critical-violation count always reflects
+        # current, not stale, state.
+        source_failure_id = test.input_data.get("source_failure_id")
+        if source_failure_id:
+            failure = db.query(FailureModel).filter_by(failure_id=source_failure_id).one_or_none()
+            if failure is not None:
+                failure.resolved = test.still_passing
 
     db.commit()
     return tests

@@ -1,42 +1,139 @@
 import React, { useState, useEffect } from 'react';
-import { fetchAgents, fetchAbis, fetchPrismStatus, fetchGraphStatus } from '../services/api';
-import { Server, Shield, Layers, Eye, Database, Clock, GitFork } from 'lucide-react';
+import {
+  fetchAgents, fetchAbis, fetchPrismStatus, fetchGraphStatus,
+  fetchFailures, fetchRegressions, fetchGateResults, loadDemoDataset,
+} from '../services/api';
+import { Server, Shield, Layers, Eye, Database, Clock, GitFork, AlertTriangle, History, ShieldCheck, UploadCloud } from 'lucide-react';
+import { ActionButton, Badge, ErrorNote } from '../components/ui';
 
 export function OverviewPage({ health }) {
   const [agents, setAgents] = useState([]);
   const [abis, setAbis] = useState([]);
   const [prismStatus, setPrismStatus] = useState(null);
   const [graphStatus, setGraphStatus] = useState(null);
+  const [failures, setFailures] = useState([]);
+  const [regressions, setRegressions] = useState([]);
+  const [gates, setGates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingDataset, setLoadingDataset] = useState(false);
+  const [loadResult, setLoadResult] = useState(null);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const [agentsData, abisData, prismData, graphData] = await Promise.all([
-          fetchAgents().catch(() => []),
-          fetchAbis().catch(() => []),
-          fetchPrismStatus().catch(() => null),
-          fetchGraphStatus().catch(() => null),
-        ]);
-        setAgents(agentsData);
-        setAbis(abisData);
-        setPrismStatus(prismData);
-        setGraphStatus(graphData);
-      } finally {
-        setLoading(false);
-      }
+  async function loadData() {
+    try {
+      const [agentsData, abisData, prismData, graphData, failuresData, regressionsData, gatesData] = await Promise.all([
+        fetchAgents().catch(() => []),
+        fetchAbis().catch(() => []),
+        fetchPrismStatus().catch(() => null),
+        fetchGraphStatus().catch(() => null),
+        fetchFailures().catch(() => []),
+        fetchRegressions().catch(() => []),
+        fetchGateResults().catch(() => []),
+      ]);
+      setAgents(agentsData);
+      setAbis(abisData);
+      setPrismStatus(prismData);
+      setGraphStatus(graphData);
+      setFailures(failuresData);
+      setRegressions(regressionsData);
+      setGates(gatesData);
+    } finally {
+      setLoading(false);
     }
-    loadData();
-  }, []);
+  }
+
+  useEffect(() => { loadData(); }, []);
+
+  const handleLoadDataset = async () => {
+    setLoadingDataset(true);
+    try {
+      const result = await loadDemoDataset();
+      setLoadResult(result);
+      setError(null);
+      await loadData();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingDataset(false);
+    }
+  };
+
+  const unresolvedCritical = failures.filter((f) => f.severity === 'CRITICAL' && !f.resolved).length;
+  const regressionPassRate = regressions.length
+    ? Math.round((regressions.filter((r) => r.still_passing).length / regressions.length) * 100)
+    : null;
+  const latestGate = gates[0];
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">System Overview</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Phase 1 Foundation: Project skeleton, polyglot persistence (SQLite + Neo4j), runtime contracts, and health connection
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-slate-900">System Overview</h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Current agent versions, reliability metrics, active failures, ABI/regression/release status
+          </p>
+        </div>
+        <div className="text-right">
+          <ActionButton onClick={handleLoadDataset} loading={loadingDataset}>
+            <UploadCloud className="w-3.5 h-3.5" /> Load Demo Dataset
+          </ActionButton>
+          {loadResult && (
+            <p className="text-[11px] text-slate-500 mt-1 font-mono">
+              {loadResult.loaded.claims} claims loaded · oracle mismatches: {loadResult.oracle_check.mismatches}
+            </p>
+          )}
+        </div>
+      </div>
+      <ErrorNote message={error} />
+
+      {/* Reliability / Failure / Regression / Release Status Row */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-mono font-semibold uppercase tracking-wider">Active Failures</span>
+            <AlertTriangle className="w-4 h-4 text-slate-400" />
+          </div>
+          <div className={`text-xl font-bold font-mono ${unresolvedCritical > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+            {unresolvedCritical} Critical
+          </div>
+          <p className="text-[11px] text-slate-500 mt-2">{failures.length} total detected</p>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-mono font-semibold uppercase tracking-wider">Regression Suite</span>
+            <History className="w-4 h-4 text-slate-400" />
+          </div>
+          <div className="text-xl font-bold font-mono text-slate-900">
+            {regressionPassRate === null ? 'No tests yet' : `${regressionPassRate}%`}
+          </div>
+          <p className="text-[11px] text-slate-500 mt-2">{regressions.length} permanent regression tests</p>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-mono font-semibold uppercase tracking-wider">Release Status</span>
+            <ShieldCheck className="w-4 h-4 text-slate-400" />
+          </div>
+          <div>
+            {latestGate ? (
+              <Badge tone={latestGate.status === 'PASS' ? 'emerald' : 'red'}>{latestGate.status}</Badge>
+            ) : (
+              <span className="text-xl font-bold font-mono text-slate-400">Not run</span>
+            )}
+          </div>
+          <p className="text-[11px] text-slate-500 mt-2 font-mono">{latestGate?.candidate_version || 'run from Release Gate'}</p>
+        </div>
+
+        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+          <div className="flex items-center justify-between text-slate-500 mb-2">
+            <span className="text-xs font-mono font-semibold uppercase tracking-wider">Agent Versions</span>
+            <Layers className="w-4 h-4 text-slate-400" />
+          </div>
+          <div className="text-xl font-bold font-mono text-slate-900">v1 / v2</div>
+          <p className="text-[11px] text-slate-500 mt-2">v1: controlled weaknesses · v2: ABI-enforced</p>
+        </div>
       </div>
 
       {/* Primary Status Metric Cards */}

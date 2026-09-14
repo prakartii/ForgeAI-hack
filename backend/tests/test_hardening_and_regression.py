@@ -68,6 +68,22 @@ def test_regression_suite_flips_to_passing_once_enforcement_is_applied(loaded_db
     assert all(t.still_passing for t in persisted)
 
 
+def test_regression_suite_marks_source_failure_resolved_and_unresolved(loaded_db):
+    from app.models.failure import FailureModel
+
+    failures = scan_fairness_groups(loaded_db, agent_version="v1")
+    test = register_regression_test(loaded_db, failures[0], abi_version_introduced="fair_adjudication_v1")
+
+    enforcement = resolve_fairness_enforcement(loaded_db)
+    run_regression_suite(loaded_db, candidate_version="v2", prohibited_fields=enforcement.prohibited_fields, workflow_enforce=True)
+    failure = loaded_db.query(FailureModel).filter_by(failure_id=test.input_data["source_failure_id"]).one()
+    assert failure.resolved is True
+
+    run_regression_suite(loaded_db, candidate_version="v1", prohibited_fields=None, workflow_enforce=False)
+    loaded_db.refresh(failure)
+    assert failure.resolved is False
+
+
 def test_regression_suite_would_catch_a_reintroduced_failure(loaded_db):
     # Rerun with the old, unprotected v1 configuration -- the regression
     # must fail again, proving the suite actually detects recurrence.
