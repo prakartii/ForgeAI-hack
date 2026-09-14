@@ -74,7 +74,7 @@ export function PrismEvidencePage() {
           Every agent run can be submitted to PRISM as a trajectory, which returns a real{' '}
           <code className="font-mono text-[12px]">prism_session_id</code>.{' '}
           {configured
-            ? 'PRISM is configured — submit a run below and fetch its evaluator result.'
+            ? 'Runs made from the Agent Runs page submit automatically; older or bulk-computed runs (metrics, hardening, regression) are never auto-submitted to stay within PRISM\'s trace budget — submit one manually below, or fetch its evaluator result.'
             : 'With no PRISM credentials configured here, this stays honestly empty rather than a placeholder score.'}
         </p>
         <ErrorNote message={error} />

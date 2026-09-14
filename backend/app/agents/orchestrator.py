@@ -42,6 +42,7 @@ def run_claim_pipeline(
     counterfactual_group: Optional[str] = None,
     abi_version: Optional[str] = None,
     mutation_id: Optional[str] = None,
+    submit_to_prism: bool = False,
 ) -> dict[str, Any]:
     if workflow_enforce is None:
         workflow_enforce = agent_version != "v1"
@@ -58,6 +59,7 @@ def run_claim_pipeline(
             counterfactual_group=counterfactual_group,
             abi_version=abi_version,
             mutation_id=mutation_id,
+            submit_to_prism=submit_to_prism,
         )
 
     wf = WorkflowStateMachine(claim.claim_id, enforce=workflow_enforce)

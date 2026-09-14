@@ -5,6 +5,7 @@ Every agent and tool call passes through this wrapper. It is the single
 place that writes the AgentRun + TraceEvent envelope to SQLite, so no
 agent may call an LLM or tool without producing a traceable record.
 """
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -12,6 +13,8 @@ from typing import Any, Optional
 from sqlalchemy.orm import Session
 
 from app.models.trace import AgentRunModel, TraceEventModel
+
+logger = logging.getLogger("failurefoundry.traces")
 
 
 def new_id(prefix: str) -> str:
@@ -37,6 +40,7 @@ class TraceRecorder:
         abi_version: Optional[str] = None,
         mutation_id: Optional[str] = None,
         prism_session_id: Optional[str] = None,
+        submit_to_prism: bool = False,
     ):
         self.db = db
         self.run_id = new_id("run")
@@ -48,7 +52,12 @@ class TraceRecorder:
         self.abi_version = abi_version
         self.mutation_id = mutation_id
         self.prism_session_id = prism_session_id
+        # Opt-in only (CLAUDE.md §21: budget trace volume) -- bulk callers
+        # (metrics/hardening/regression, which run this across thousands of
+        # claims) never pass this; only a single interactive claim run does.
+        self.submit_to_prism = submit_to_prism
         self._run_row: Optional[AgentRunModel] = None
+        self._events: list[TraceEventModel] = []
 
     def __enter__(self) -> "TraceRecorder":
         self._run_row = AgentRunModel(
@@ -103,6 +112,7 @@ class TraceRecorder:
         )
         self.db.add(event)
         self.db.commit()
+        self._events.append(event)
         return event
 
     def complete(self, status: str = "completed") -> None:
@@ -110,6 +120,25 @@ class TraceRecorder:
         self._run_row.status = status
         self.db.commit()
 
+    def _try_submit_to_prism(self) -> None:
+        """Best-effort, never raises: a PRISM outage must not break a claim
+        run. Honest either way -- prism_session_id stays None on failure,
+        never a fabricated id (CLAUDE.md §31)."""
+        from app.prism import get_prism_client
+
+        try:
+            client = get_prism_client()
+            if not client.is_configured or self._run_row is None:
+                return
+            trajectory_id = client.submit_agent_run(self._run_row, self._events)
+            if trajectory_id:
+                self._run_row.prism_session_id = trajectory_id
+                self.db.commit()
+        except Exception as e:  # pragma: no cover - defensive
+            logger.warning(f"PRISM auto-submit failed for run {self.run_id}: {e}")
+
     def __exit__(self, exc_type, exc, tb) -> bool:
         self.complete("failed" if exc_type else "completed")
+        if self.submit_to_prism:
+            self._try_submit_to_prism()
         return False

@@ -59,6 +59,10 @@ def execute_claim_pipeline(
         db, claim, policy, agent_version=agent_version,
         prohibited_fields=prohibited_fields, workflow_enforce=workflow_enforce,
         scenario_id=claim_id, abi_version=abi_version,
+        # A single interactive run (this endpoint) submits to PRISM live.
+        # Bulk callers (metrics/hardening/regression) never set this --
+        # they'd otherwise fire thousands of PRISM calls per computation.
+        submit_to_prism=True,
     )
 
     workflow_state = result.pop("workflow_state", None)
