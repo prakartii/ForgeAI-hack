@@ -8,10 +8,31 @@ from app.enforcement.engine import resolve_enforcement
 from app.failures.scanner import scan_claims, scan_fairness_groups
 from app.models.domain import ClaimModel
 from app.models.failure import FailureModel
+from app.models.trace import AgentRunModel
 from app.regression.engine import register_regression_test
 from app.schemas.failure import Failure
 
 router = APIRouter(prefix="/failures", tags=["Failures"])
+
+
+def _with_live_prism_session(db: Session, failures: List[FailureModel]) -> List[FailureModel]:
+    """
+    A failure's own prism_session_id column is never written directly --
+    it's resolved live from the AgentRun it points to, so a failure
+    submitted to PRISM after being recorded still shows the real session
+    id instead of a stale/empty one.
+    """
+    run_ids = {f.run_id for f in failures if f.run_id}
+    if not run_ids:
+        return failures
+    sessions = {
+        r.run_id: r.prism_session_id
+        for r in db.query(AgentRunModel).filter(AgentRunModel.run_id.in_(run_ids)).all()
+    }
+    for f in failures:
+        if f.run_id and sessions.get(f.run_id):
+            f.prism_session_id = sessions[f.run_id]
+    return failures
 
 
 @router.get("", response_model=List[Failure])
@@ -25,7 +46,8 @@ def list_failures(
         query = query.filter(FailureModel.failure_type == failure_type)
     if resolved is not None:
         query = query.filter(FailureModel.resolved == resolved)
-    return query.order_by(FailureModel.id.desc()).limit(200).all()
+    failures = query.order_by(FailureModel.id.desc()).limit(200).all()
+    return _with_live_prism_session(db, failures)
 
 
 @router.post("/scan", response_model=Dict[str, Any])

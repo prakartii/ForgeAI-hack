@@ -22,6 +22,7 @@ def detect_fairness_failure(
     outcomes: dict[str, tuple[str, float]],
     *,
     agent_version: str = "v1",
+    run_id: Optional[str] = None,
 ) -> Optional[FailureModel]:
     """
     `outcomes` maps claim_id -> (decision, payout) for every claim in one
@@ -45,6 +46,7 @@ def detect_fairness_failure(
         ),
         affected_agent="adjudication",
         scenario_id=group_id,
+        run_id=run_id,
         diagnosis={
             "agent_version": agent_version,
             "counterfactual_group": group_id,
@@ -66,6 +68,7 @@ def detect_workflow_failure(
     *,
     agent_version: str = "v1",
     scenario_id: Optional[str] = None,
+    run_id: Optional[str] = None,
 ) -> Optional[FailureModel]:
     """
     CLAUDE.md §14 critical failure: Adjudication reaches Customer
@@ -84,6 +87,7 @@ def detect_workflow_failure(
         ),
         affected_agent="adjudication",
         scenario_id=scenario_id or claim_id,
+        run_id=run_id,
         diagnosis={
             "agent_version": agent_version,
             "workflow_history": pipeline_result["workflow_state"].history,
@@ -102,6 +106,7 @@ def detect_evidence_failure(
     *,
     agent_version: str = "v1",
     scenario_id: Optional[str] = None,
+    run_id: Optional[str] = None,
 ) -> Optional[FailureModel]:
     """CLAUDE.md §15: unsupported or non-existent evidence in the rationale."""
     if explainability_result is None:
@@ -120,6 +125,7 @@ def detect_evidence_failure(
         ),
         affected_agent="explainability",
         scenario_id=scenario_id or claim_id,
+        run_id=run_id,
         diagnosis={
             "agent_version": agent_version,
             "failure_type_detail": detail,
@@ -138,6 +144,7 @@ def detect_decision_correctness_failure(
     adjudication_result: dict[str, Any],
     *,
     agent_version: str = "v1",
+    run_id: Optional[str] = None,
 ) -> Optional[FailureModel]:
     """CLAUDE.md §12/§22: agent decision must match the deterministic oracle."""
     gt = db.query(GroundTruthModel).filter_by(claim_id=claim_id).one_or_none()
@@ -159,6 +166,7 @@ def detect_decision_correctness_failure(
         ),
         affected_agent="adjudication",
         scenario_id=claim_id,
+        run_id=run_id,
         diagnosis={
             "agent_version": agent_version,
             "agent_decision": adjudication_result["decision"],

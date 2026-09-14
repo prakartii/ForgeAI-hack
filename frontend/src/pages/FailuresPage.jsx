@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, ScanSearch } from 'lucide-react';
-import { fetchFailures, scanForFailures } from '../services/api';
+import { AlertTriangle, ScanSearch, UploadCloud } from 'lucide-react';
+import { fetchFailures, fetchPrismStatus, scanForFailures, submitRunToPrism } from '../services/api';
 import { ActionButton, Badge, Card, EmptyState, ErrorNote } from '../components/ui';
 
 const TYPE_TONE = {
@@ -18,12 +18,20 @@ export function FailuresPage() {
   const [agentVersion, setAgentVersion] = useState('v1');
   const [scanSummary, setScanSummary] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [prismStatus, setPrismStatus] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setFailures(await fetchFailures());
+      const [failuresData, prismData] = await Promise.all([
+        fetchFailures(),
+        fetchPrismStatus().catch(() => null),
+      ]);
+      setFailures(failuresData);
+      setPrismStatus(prismData);
       setError(null);
+      setSelected((prev) => (prev ? failuresData.find((f) => f.failure_id === prev.failure_id) || prev : prev));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -32,6 +40,21 @@ export function FailuresPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const prismConfigured = prismStatus?.status === 'configured';
+
+  const handleSubmitToPrism = async (runId) => {
+    setSubmitting(true);
+    try {
+      await submitRunToPrism(runId);
+      setError(null);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleScan = async (enforced) => {
     setScanning(true);
@@ -118,11 +141,24 @@ export function FailuresPage() {
             <p className="text-[13px] text-ink-faint">Select a failure to inspect its diagnosis, scenario, and PRISM evidence link.</p>
           ) : (
             <div className="space-y-3 text-[13px]">
-              <div className="grid grid-cols-[120px_1fr] gap-1">
+              <div className="grid grid-cols-[120px_1fr] gap-1 items-center">
                 <span className="text-ink-faint">Failure ID</span><span className="font-mono">{selected.failure_id}</span>
                 <span className="text-ink-faint">Scenario</span><span className="font-mono">{selected.scenario_id || '—'}</span>
                 <span className="text-ink-faint">PRISM session</span>
-                <span className="font-mono text-ink-faint">{selected.prism_session_id || 'unavailable — PRISM not configured'}</span>
+                {selected.prism_session_id ? (
+                  <span className="font-mono text-verdant-700">{selected.prism_session_id}</span>
+                ) : !prismConfigured ? (
+                  <span className="font-mono text-ink-faint">unavailable — PRISM not configured</span>
+                ) : !selected.run_id ? (
+                  <span className="font-mono text-ink-faint">unavailable — no execution run recorded for this scan</span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <span className="font-mono text-ink-faint">not yet submitted</span>
+                    <ActionButton variant="secondary" loading={submitting} onClick={() => handleSubmitToPrism(selected.run_id)}>
+                      <UploadCloud className="w-3 h-3" /> Submit to PRISM
+                    </ActionButton>
+                  </span>
+                )}
               </div>
               <div>
                 <span className="text-ink-faint block mb-1.5">Diagnosis</span>

@@ -6,6 +6,7 @@ from app.db.base import Base
 import app.models  # noqa: F401
 from app.failures.scanner import scan_claims, scan_fairness_groups
 from app.models.failure import FailureModel
+from app.models.trace import AgentRunModel
 from app.scenarios.csv_loader import load_dataset
 
 
@@ -64,3 +65,23 @@ def test_evidence_failure_detected_for_injected_nonexistent_citation(loaded_db):
 def test_decision_correctness_matches_oracle_for_clean_claims(loaded_db):
     result = scan_claims(loaded_db, ["IMG_0002"], agent_version="v2")
     assert result["DECISION_CORRECTNESS"] == []
+
+
+def test_failures_carry_a_real_run_id_that_resolves_to_an_agent_run(loaded_db):
+    """
+    A failure must be traceable back to the AgentRun that produced it
+    (CLAUDE.md sec9's correlation model), so PRISM evidence submitted for
+    that run can be found later via failure.run_id -> AgentRun.
+    """
+    fairness_failures = scan_fairness_groups(loaded_db, agent_version="v1")
+    assert all(f.run_id for f in fairness_failures)
+    for f in fairness_failures:
+        run = loaded_db.query(AgentRunModel).filter_by(run_id=f.run_id).one()
+        assert run.agent_name == "adjudication"
+
+    workflow_result = scan_claims(loaded_db, ["IMG_0002"], agent_version="v1")
+    workflow_failure = workflow_result["WORKFLOW"][0]
+    assert workflow_failure.run_id is not None
+    run = loaded_db.query(AgentRunModel).filter_by(run_id=workflow_failure.run_id).one()
+    assert run.agent_name == "adjudication"
+    assert run.claim_id == "IMG_0002"
