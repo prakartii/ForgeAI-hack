@@ -9,6 +9,7 @@ It must never directly import from app.abi or app.enforcement.
 """
 
 from app.agents.adjudication import PROXY_FIELDS, build_adjudication_context, run_adjudication
+from app.agents.adjudication_explainability import run_adjudication_and_explainability
 from app.agents.appeals import run_appeals
 from app.agents.explainability import run_explainability
 from app.agents.intake import run_intake
@@ -18,6 +19,7 @@ __all__ = [
     "PROXY_FIELDS",
     "build_adjudication_context",
     "run_adjudication",
+    "run_adjudication_and_explainability",
     "run_appeals",
     "run_explainability",
     "run_intake",

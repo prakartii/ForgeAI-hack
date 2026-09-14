@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from app.db.base import Base
 import app.models  # noqa: F401
 from app.agents.adjudication import PROXY_FIELDS, run_adjudication
+from app.agents.adjudication_explainability import run_adjudication_and_explainability
 from app.agents.intake import run_intake
 from app.agents.orchestrator import run_appeal, run_claim_pipeline
 from app.models.domain import ClaimModel, PolicyModel
@@ -140,3 +141,31 @@ def test_appeal_reassesses_with_material_new_evidence(loaded_db):
     result = run_appeal(loaded_db, claim, previous_decision="DENY", has_new_evidence=True)
     assert result["decision_changed"] is True
     assert result["outcome"] == "REASSESSED"
+
+
+def test_combined_adjudication_and_explainability_agent(loaded_db):
+    claim, policy = _claim_and_policy(loaded_db, "IMG_0002")
+    result = run_adjudication_and_explainability(
+        claim,
+        policy,
+        prohibited_fields=PROXY_FIELDS,
+        inject_failure=False,
+    )
+    # Verifies both stages executed and combined into unified output
+    assert result["decision"] == "APPROVE"
+    assert result["payout"] > 0
+    assert "explanation" in result
+    assert result["citation_valid"] is True
+    assert result["supported_by_evidence"] is True
+    assert "adjudication" in result
+    assert "explainability" in result
+
+
+def test_pipeline_includes_combined_agent_payload(loaded_db):
+    claim, policy = _claim_and_policy(loaded_db, "IMG_0002")
+    result = run_claim_pipeline(loaded_db, claim, policy, agent_version="v2")
+    assert result["status"] == "COMPLETED"
+    assert "combined_agent" in result
+    assert result["combined_agent"]["decision"] == result["adjudication"]["decision"]
+    assert result["combined_agent"]["explanation"] == result["explainability"]["explanation"]
+
