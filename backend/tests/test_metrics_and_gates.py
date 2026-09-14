@@ -9,7 +9,20 @@ from app.enforcement.engine import resolve_enforcement
 from app.gates.engine import evaluate_release_gate
 from app.metrics.engine import compute_metrics
 from app.models.domain import ClaimModel
+from app.prism import get_prism_client
 from app.scenarios.csv_loader import load_dataset
+
+
+def _force_prism_unconfigured(monkeypatch):
+    """
+    Forces the shared PRISM client to report not_configured regardless of
+    whatever real PRISM_API_KEY/PRISM_PROJECT_ID happen to be set in this
+    environment's .env -- these tests assert behavior for the unconfigured
+    case specifically, not the ambient dev environment's credentials.
+    """
+    client = get_prism_client()
+    monkeypatch.setattr(client.settings, "prism_api_key", None)
+    monkeypatch.setattr(client.settings, "prism_project_id", None)
 
 
 @pytest.fixture(scope="module")
@@ -29,7 +42,8 @@ def _sample_claim_ids(db, n=150):
     return [row[0] for row in db.query(ClaimModel.claim_id).limit(n).all()]
 
 
-def test_v1_metrics_show_real_fairness_and_workflow_gaps(loaded_db):
+def test_v1_metrics_show_real_fairness_and_workflow_gaps(loaded_db, monkeypatch):
+    _force_prism_unconfigured(monkeypatch)
     metrics = compute_metrics(
         loaded_db,
         candidate_version="v1",
@@ -67,13 +81,15 @@ def test_release_gate_blocks_v1_for_fairness_and_workflow_violations(loaded_db):
     assert "workflow_compliance" in result.violated_clauses
 
 
-def test_release_gate_blocks_v2_only_on_missing_prism_evidence(loaded_db):
+def test_release_gate_blocks_v2_only_on_missing_prism_evidence(loaded_db, monkeypatch):
     """
-    With no PRISM credentials configured in this environment, the gate
-    must legitimately block on that single clause rather than pretend
-    evidence exists (CLAUDE.md §23/§31) -- every other clause should pass
-    once enforcement is active.
+    Without PRISM credentials, the gate must legitimately block on that
+    single clause rather than pretend evidence exists (CLAUDE.md
+    sec23/sec31) -- every other clause should pass once enforcement is
+    active. Forced unconfigured here since this environment may have real
+    PRISM credentials in .env for manual end-to-end testing.
     """
+    _force_prism_unconfigured(monkeypatch)
     enforcement = resolve_enforcement(loaded_db)
     metrics = compute_metrics(
         loaded_db,
@@ -85,6 +101,30 @@ def test_release_gate_blocks_v2_only_on_missing_prism_evidence(loaded_db):
     result = evaluate_release_gate(loaded_db, candidate_version="v2", metrics=metrics)
     assert result.violated_clauses == ["prism_evidence"]
     assert result.status == "BLOCKED"
+
+
+def test_release_gate_prism_clause_passes_when_credentials_are_real(loaded_db):
+    """
+    When real PRISM credentials are configured (e.g. during manual
+    end-to-end testing against a live PRISM account), the prism_evidence
+    clause must actually reflect that -- not just always report
+    unconfigured. Skipped when no real credentials are present.
+    """
+    client = get_prism_client()
+    if not client.is_configured:
+        return
+
+    enforcement = resolve_enforcement(loaded_db)
+    metrics = compute_metrics(
+        loaded_db,
+        candidate_version="v2",
+        prohibited_fields=enforcement["prohibited_fields"],
+        workflow_enforce=enforcement["workflow_enforce"],
+        claim_ids=_sample_claim_ids(loaded_db, n=5),
+    )
+    assert metrics["prism_evidence"]["status"] == "configured"
+    result = evaluate_release_gate(loaded_db, candidate_version="v2", metrics=metrics)
+    assert "prism_evidence" not in result.violated_clauses
 
 
 def test_release_gate_passes_v2_when_prism_evidence_not_required(loaded_db, monkeypatch):
