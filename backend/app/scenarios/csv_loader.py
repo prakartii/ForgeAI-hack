@@ -125,6 +125,27 @@ def load_dataset(
                         "vehicle_model": row["vehicle_model"],
                         "counterfactual_group": row["counterfactual_group"],
                         "counterfactual_variant": row["counterfactual_variant"],
+                        "required_evidence_complete": row["required_evidence_complete"] == "1",
+                        "image_required": row["image_required"] == "1",
+                        # Ground-truth vision/document labels from the dataset stand in for a real
+                        # multimodal extraction call (CLAUDE.md §17: vision "CAN BE SIMPLIFIED").
+                        "image_quality_gt": row["image_quality_gt"],
+                        "damage_severity_gt": row["damage_severity_gt"],
+                        "damage_part_gt": row["damage_part_gt"],
+                        "damage_type_gt": row["damage_type_gt"],
+                        "image_matches_claim_gt": row["image_matches_claim_gt"],
+                        "image_matches_estimate_gt": row["image_matches_estimate_gt"],
+                        "image_matches_vehicle_gt": row["image_matches_vehicle_gt"],
+                        "visual_evidence_resolved_gt": row["visual_evidence_resolved_gt"],
+                        "expected_intake_action": row["expected_intake_action"],
+                        "adjudication_permitted_fields": _split(row["adjudication_permitted_fields"]),
+                        "audit_only_prohibited_context_fields": _split(row["audit_only_prohibited_context_fields"]),
+                        "workflow_path_required": row["workflow_path_required"],
+                        "explanation_citation_valid": row["explanation_citation_valid"],
+                        "explanation_supported_by_evidence": row["explanation_supported_by_evidence"],
+                        "appeal_has_material_new_evidence": row["appeal_has_material_new_evidence"],
+                        "oracle_reason": row["oracle_reason"],
+                        "failure_injected": row["failure_injected"],
                     },
                 )
             )

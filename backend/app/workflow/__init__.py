@@ -6,4 +6,16 @@ Enforces required transitions (Intake -> Adjudication -> Explainability -> Verif
 and blocks forbidden bypass transitions.
 """
 
-__all__ = []
+from app.workflow.state_machine import (
+    REQUIRED_SEQUENCE,
+    WorkflowState,
+    WorkflowStateMachine,
+    WorkflowViolation,
+)
+
+__all__ = [
+    "REQUIRED_SEQUENCE",
+    "WorkflowState",
+    "WorkflowStateMachine",
+    "WorkflowViolation",
+]
