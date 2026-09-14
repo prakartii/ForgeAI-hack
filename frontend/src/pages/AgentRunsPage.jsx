@@ -51,96 +51,94 @@ export function AgentRunsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">Agent Runs</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          CLAUDE.md §8 & §9: AgentRun execution traces and envelope records
-        </p>
+        <h2 className="text-2xl font-medium text-ink">Agent runs</h2>
+        <p className="text-[13px] text-ink-soft mt-1">Execute a claim through the live pipeline and browse its trace history</p>
       </div>
 
-      <Card title="Run a Claim" icon={Zap} tag="POST /api/runs/execute">
+      <Card title="Run a claim" icon={Zap} tag="POST /api/runs/execute">
         <div className="flex flex-wrap items-end gap-3">
-          <label className="text-xs">
-            <span className="block text-slate-500 mb-1 font-mono">claim_id</span>
+          <label className="text-[12px]">
+            <span className="block text-ink-faint mb-1">Claim ID</span>
             <input
               value={claimId}
               onChange={(e) => setClaimId(e.target.value)}
-              className="border border-slate-300 rounded px-2 py-1.5 text-xs font-mono w-40"
+              className="border border-line-strong rounded px-2.5 py-1.5 text-[13px] font-mono w-40 bg-paper-panel focus:border-ledger"
             />
           </label>
-          <label className="text-xs">
-            <span className="block text-slate-500 mb-1 font-mono">agent_version</span>
+          <label className="text-[12px]">
+            <span className="block text-ink-faint mb-1">Agent version</span>
             <select
               value={agentVersion}
               onChange={(e) => setAgentVersion(e.target.value)}
-              className="border border-slate-300 rounded px-2 py-1.5 text-xs font-mono"
+              className="border border-line-strong rounded px-2.5 py-1.5 text-[13px] bg-paper-panel focus:border-ledger"
             >
-              <option value="v1">v1 (controlled weaknesses)</option>
-              <option value="v2">v2 (fixed)</option>
+              <option value="v1">v1 — controlled weaknesses</option>
+              <option value="v2">v2 — fixed</option>
             </select>
           </label>
-          <label className="text-xs flex items-center gap-1.5 pb-1.5">
+          <label className="text-[12px] flex items-center gap-1.5 pb-1.5">
             <input type="checkbox" checked={enforced} onChange={(e) => setEnforced(e.target.checked)} />
-            <span className="text-slate-600">enforce compiled ABI</span>
+            <span className="text-ink-soft">Enforce compiled ABI</span>
           </label>
           <ActionButton onClick={handleExecute} loading={executing}>
-            <PlayCircle className="w-3.5 h-3.5" /> Run Pipeline
+            <PlayCircle className="w-3.5 h-3.5" /> Run pipeline
           </ActionButton>
         </div>
         <ErrorNote message={error} />
         {lastResult && (
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-[13px]">
             <div>
-              <div className="text-slate-500 font-mono">status</div>
+              <div className="text-ink-faint text-[11px] mb-1">Status</div>
               <Badge tone={lastResult.status === 'COMPLETED' ? 'emerald' : lastResult.status?.includes('BLOCKED') ? 'red' : 'amber'}>
                 {lastResult.status}
               </Badge>
             </div>
             <div>
-              <div className="text-slate-500 font-mono">decision</div>
-              <div className="font-mono font-semibold">{lastResult.adjudication?.decision}</div>
+              <div className="text-ink-faint text-[11px] mb-1">Decision</div>
+              <div className="font-medium">{lastResult.adjudication?.decision}</div>
             </div>
             <div>
-              <div className="text-slate-500 font-mono">payout</div>
-              <div className="font-mono font-semibold">INR {lastResult.adjudication?.payout}</div>
+              <div className="text-ink-faint text-[11px] mb-1">Payout</div>
+              <div className="font-medium font-mono">₹{lastResult.adjudication?.payout}</div>
             </div>
             <div>
-              <div className="text-slate-500 font-mono">explanation verified</div>
-              <div className="font-mono font-semibold">{String(!!lastResult.workflow_state?.explanation_verified)}</div>
+              <div className="text-ink-faint text-[11px] mb-1">Explanation verified</div>
+              <div className="font-medium">{lastResult.workflow_state?.explanation_verified ? 'Yes' : 'No'}</div>
             </div>
           </div>
         )}
       </Card>
 
-      <Card title="Recent Runs" icon={Clock}>
+      <Card title="Recent runs" icon={Clock} noPadding>
         {loading ? (
-          <p className="text-xs text-slate-500">Loading...</p>
+          <p className="text-[13px] text-ink-faint p-5">Loading…</p>
         ) : runs.length === 0 ? (
-          <EmptyState
-            title="No Execution Runs Yet"
-            description="Run a claim above, or load the demo dataset from the Overview page, then rerun."
-          />
+          <div className="p-5"><EmptyState
+            title="No runs yet"
+            description="Run a claim above, or load the demo dataset from Overview, then come back and rerun."
+          /></div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-[13px]">
               <thead>
-                <tr className="text-left text-slate-500 font-mono uppercase text-[10px] border-b border-slate-200">
-                  <th className="py-2 pr-4">Claim</th>
-                  <th className="py-2 pr-4">Agent</th>
-                  <th className="py-2 pr-4">Version</th>
-                  <th className="py-2 pr-4">Status</th>
-                  <th className="py-2 pr-4">Scenario</th>
-                  <th className="py-2 pr-4">ABI Version</th>
+                <tr className="text-left text-ink-faint text-[11px] border-b border-line">
+                  <th className="py-2 pl-5 pr-4 font-normal">Claim</th>
+                  <th className="py-2 pr-4 font-normal">Agent</th>
+                  <th className="py-2 pr-4 font-normal">Version</th>
+                  <th className="py-2 pr-4 font-normal">Status</th>
+                  <th className="py-2 pr-4 font-normal">Scenario</th>
+                  <th className="py-2 pr-5 font-normal">ABI version</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {runs.slice(0, 50).map((run) => (
                   <tr key={run.run_id}>
-                    <td className="py-2 pr-4 font-mono">{run.claim_id}</td>
-                    <td className="py-2 pr-4 font-mono">{run.agent_name}</td>
+                    <td className="py-2 pl-5 pr-4 font-mono">{run.claim_id}</td>
+                    <td className="py-2 pr-4">{run.agent_name}</td>
                     <td className="py-2 pr-4 font-mono">{run.agent_version}</td>
                     <td className="py-2 pr-4"><Badge tone={STATUS_TONE[run.status] || 'slate'}>{run.status}</Badge></td>
-                    <td className="py-2 pr-4 font-mono text-slate-500">{run.scenario_id || '-'}</td>
-                    <td className="py-2 pr-4 font-mono text-slate-500">{run.abi_version || '-'}</td>
+                    <td className="py-2 pr-4 font-mono text-ink-faint">{run.scenario_id || '—'}</td>
+                    <td className="py-2 pr-5 font-mono text-ink-faint">{run.abi_version || '—'}</td>
                   </tr>
                 ))}
               </tbody>

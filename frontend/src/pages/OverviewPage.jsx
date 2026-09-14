@@ -3,8 +3,8 @@ import {
   fetchAgents, fetchAbis, fetchPrismStatus, fetchGraphStatus,
   fetchFailures, fetchRegressions, fetchGateResults, loadDemoDataset,
 } from '../services/api';
-import { Server, Shield, Layers, Eye, Database, Clock, GitFork, AlertTriangle, History, ShieldCheck, UploadCloud } from 'lucide-react';
-import { ActionButton, Badge, ErrorNote } from '../components/ui';
+import { Server, Shield, Layers, Eye, Database, GitFork, AlertTriangle, History, ShieldCheck, UploadCloud } from 'lucide-react';
+import { ActionButton, Badge, Card, ErrorNote, MetricTile } from '../components/ui';
 
 export function OverviewPage({ health }) {
   const [agents, setAgents] = useState([]);
@@ -14,32 +14,27 @@ export function OverviewPage({ health }) {
   const [failures, setFailures] = useState([]);
   const [regressions, setRegressions] = useState([]);
   const [gates, setGates] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [loadingDataset, setLoadingDataset] = useState(false);
   const [loadResult, setLoadResult] = useState(null);
   const [error, setError] = useState(null);
 
   async function loadData() {
-    try {
-      const [agentsData, abisData, prismData, graphData, failuresData, regressionsData, gatesData] = await Promise.all([
-        fetchAgents().catch(() => []),
-        fetchAbis().catch(() => []),
-        fetchPrismStatus().catch(() => null),
-        fetchGraphStatus().catch(() => null),
-        fetchFailures().catch(() => []),
-        fetchRegressions().catch(() => []),
-        fetchGateResults().catch(() => []),
-      ]);
-      setAgents(agentsData);
-      setAbis(abisData);
-      setPrismStatus(prismData);
-      setGraphStatus(graphData);
-      setFailures(failuresData);
-      setRegressions(regressionsData);
-      setGates(gatesData);
-    } finally {
-      setLoading(false);
-    }
+    const [agentsData, abisData, prismData, graphData, failuresData, regressionsData, gatesData] = await Promise.all([
+      fetchAgents().catch(() => []),
+      fetchAbis().catch(() => []),
+      fetchPrismStatus().catch(() => null),
+      fetchGraphStatus().catch(() => null),
+      fetchFailures().catch(() => []),
+      fetchRegressions().catch(() => []),
+      fetchGateResults().catch(() => []),
+    ]);
+    setAgents(agentsData);
+    setAbis(abisData);
+    setPrismStatus(prismData);
+    setGraphStatus(graphData);
+    setFailures(failuresData);
+    setRegressions(regressionsData);
+    setGates(gatesData);
   }
 
   useEffect(() => { loadData(); }, []);
@@ -66,239 +61,138 @@ export function OverviewPage({ health }) {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-slate-900">System Overview</h2>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Current agent versions, reliability metrics, active failures, ABI/regression/release status
+          <h2 className="text-2xl font-medium text-ink">Overview</h2>
+          <p className="text-[13px] text-ink-soft mt-1">
+            Current agent versions, reliability metrics, active failures, and release status
           </p>
         </div>
-        <div className="text-right">
+        <div className="text-right flex-shrink-0">
           <ActionButton onClick={handleLoadDataset} loading={loadingDataset}>
-            <UploadCloud className="w-3.5 h-3.5" /> Load Demo Dataset
+            <UploadCloud className="w-3.5 h-3.5" /> Load demo dataset
           </ActionButton>
           {loadResult && (
-            <p className="text-[11px] text-slate-500 mt-1 font-mono">
-              {loadResult.loaded.claims} claims loaded · oracle mismatches: {loadResult.oracle_check.mismatches}
+            <p className="text-[11px] text-ink-faint mt-1.5">
+              {loadResult.loaded.claims} claims loaded, {loadResult.oracle_check.mismatches} oracle mismatches
             </p>
           )}
         </div>
       </div>
       <ErrorNote message={error} />
 
-      {/* Reliability / Failure / Regression / Release Status Row */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider">Active Failures</span>
-            <AlertTriangle className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className={`text-xl font-bold font-mono ${unresolvedCritical > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
-            {unresolvedCritical} Critical
-          </div>
-          <p className="text-[11px] text-slate-500 mt-2">{failures.length} total detected</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider">Regression Suite</span>
-            <History className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="text-xl font-bold font-mono text-slate-900">
-            {regressionPassRate === null ? 'No tests yet' : `${regressionPassRate}%`}
-          </div>
-          <p className="text-[11px] text-slate-500 mt-2">{regressions.length} permanent regression tests</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider">Release Status</span>
-            <ShieldCheck className="w-4 h-4 text-slate-400" />
-          </div>
-          <div>
-            {latestGate ? (
-              <Badge tone={latestGate.status === 'PASS' ? 'emerald' : 'red'}>{latestGate.status}</Badge>
-            ) : (
-              <span className="text-xl font-bold font-mono text-slate-400">Not run</span>
-            )}
-          </div>
-          <p className="text-[11px] text-slate-500 mt-2 font-mono">{latestGate?.candidate_version || 'run from Release Gate'}</p>
-        </div>
-
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider">Agent Versions</span>
-            <Layers className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="text-xl font-bold font-mono text-slate-900">v1 / v2</div>
-          <p className="text-[11px] text-slate-500 mt-2">v1: controlled weaknesses · v2: ABI-enforced</p>
-        </div>
+        <MetricTile
+          icon={AlertTriangle}
+          label="Active failures"
+          value={`${unresolvedCritical} critical`}
+          sub={`${failures.length} total detected`}
+          tone={unresolvedCritical > 0 ? 'seal' : 'verdant'}
+        />
+        <MetricTile
+          icon={History}
+          label="Regression suite"
+          value={regressionPassRate === null ? 'No tests yet' : `${regressionPassRate}%`}
+          sub={`${regressions.length} permanent regression tests`}
+        />
+        <MetricTile
+          icon={ShieldCheck}
+          label="Release status"
+          value={latestGate ? <Badge tone={latestGate.status === 'PASS' ? 'emerald' : 'red'}>{latestGate.status}</Badge> : 'Not run'}
+          sub={latestGate?.candidate_version || 'Run from Release Gate'}
+        />
+        <MetricTile
+          icon={Layers}
+          label="Agent versions"
+          value="v1 / v2"
+          sub="v1: controlled weaknesses · v2: ABI-enforced"
+        />
       </div>
 
-      {/* Primary Status Metric Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Backend Connectivity */}
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider">FastAPI Backend</span>
-            <Server className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-slate-900 font-mono">
-              {health ? health.status.toUpperCase() : 'CONNECTING'}
-            </span>
-            {health && (
-              <span className="text-xs text-emerald-600 font-medium">v{health.version}</span>
-            )}
-          </div>
-          <p className="text-[11px] text-slate-500 mt-2 flex items-center gap-1.5">
-            <Clock className="w-3 h-3 text-slate-400" />
-            Env: <span className="font-mono text-slate-700">{health?.environment || 'development'}</span>
-          </p>
-        </div>
-
-        {/* SQLite Database */}
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider">SQLite (Primary)</span>
-            <Database className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-slate-900 font-mono">
-              {health?.database === 'connected' ? 'CONNECTED' : 'STANDBY'}
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 mt-2">
-            System of record (17 tables)
-          </p>
-        </div>
-
-        {/* Neo4j Graph Projection */}
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider">Neo4j (Graph)</span>
-            <GitFork className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-slate-900 font-mono">
-              {(graphStatus?.status || health?.graph_database || 'standby').toUpperCase()}
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 mt-2 truncate font-mono" title={graphStatus?.message}>
-            {graphStatus?.status === 'connected' ? 'Causal graph active' : 'Causal lineage projection'}
-          </p>
-        </div>
-
-        {/* Behavior ABI Specs */}
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider">Behavior ABIs</span>
-            <Shield className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-slate-900 font-mono">
-              {abis.length} Active
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 mt-2 font-mono truncate">
-            {abis.map(a => a.abi_version).join(', ') || 'Loading specs...'}
-          </p>
-        </div>
-
-        {/* PRISM Monitor Status */}
-        <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-mono font-semibold uppercase tracking-wider">PRISM Monitor</span>
-            <Eye className="w-4 h-4 text-slate-400" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-xl font-bold text-slate-900 font-mono">
-              {prismStatus?.status === 'configured' ? 'CONFIGURED' : 'STANDBY'}
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500 mt-2 truncate font-mono" title={prismStatus?.message}>
-            {prismStatus?.status === 'configured' ? prismStatus.base_url : 'Credentials pending (Phase 5)'}
-          </p>
-        </div>
+        <MetricTile
+          icon={Server}
+          label="FastAPI backend"
+          value={health ? health.status : 'connecting'}
+          sub={`Environment: ${health?.environment || 'development'}`}
+        />
+        <MetricTile
+          icon={Database}
+          label="SQLite (primary)"
+          value={health?.database === 'connected' ? 'Connected' : 'Standby'}
+          sub="System of record, 17 tables"
+        />
+        <MetricTile
+          icon={GitFork}
+          label="Neo4j (graph)"
+          value={graphStatus?.status === 'connected' ? 'Connected' : 'Standby'}
+          sub={graphStatus?.status === 'connected' ? 'Causal graph active' : 'SQLite fallback in use'}
+        />
+        <MetricTile
+          icon={Shield}
+          label="Behavior ABIs"
+          value={`${abis.length} active`}
+          sub={abis.map((a) => a.abi_version).join(', ') || 'Loading specs…'}
+        />
+        <MetricTile
+          icon={Eye}
+          label="PRISM monitor"
+          value={prismStatus?.status === 'configured' ? 'Configured' : 'Not configured'}
+          sub={prismStatus?.status === 'configured' ? prismStatus.base_url : 'Credentials pending'}
+        />
       </div>
 
-      {/* Two Column Layout: FairClaim Agents & Architecture Boundaries */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* FairClaim Insurance Agent Pipeline Status */}
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-slate-600" />
-              <h3 className="text-sm font-semibold text-slate-900">FairClaim Agents (Demo Environment)</h3>
-            </div>
-            <span className="text-[11px] font-mono bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded">
-              CLAUDE.md §6
-            </span>
-          </div>
-          <div className="p-5 divide-y divide-slate-100">
+        <Card icon={Layers} title="FairClaim agents" tag="Demonstration environment">
+          <div className="divide-y divide-line -mt-2">
             {agents.map((agent) => (
               <div key={agent.name} className="py-3 first:pt-0 last:pb-0 flex items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900 font-mono">{agent.name}</span>
-                    <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.2 rounded font-mono">
-                      {agent.status}
-                    </span>
+                    <span className="text-[13px] font-medium text-ink">{agent.name}</span>
+                    <Badge tone="emerald">{agent.status}</Badge>
                   </div>
-                  <p className="text-xs text-slate-500 mt-1">{agent.role}</p>
+                  <p className="text-[12px] text-ink-soft mt-0.5">{agent.role}</p>
                 </div>
-                <div className="text-[11px] font-mono text-slate-400">
+                <div className="text-[11px] font-mono text-ink-faint flex-shrink-0">
                   {agent.supported_versions.join(', ')}
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </Card>
 
-        {/* Architectural Boundaries & Responsibility Separation */}
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-slate-200 bg-slate-50/50 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4 text-slate-600" />
-              <h3 className="text-sm font-semibold text-slate-900">Polyglot Persistence & Architecture</h3>
-            </div>
-            <span className="text-[11px] font-mono bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded">
-              CLAUDE.md §5 & §10
-            </span>
-          </div>
-          <div className="p-5 space-y-3 text-xs">
-            <div className="p-2.5 bg-slate-50 rounded-md border border-slate-200">
-              <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                SQLite: Primary System of Record
+        <Card icon={Shield} title="Polyglot persistence" tag="SQLite + Neo4j">
+          <div className="space-y-3 text-[13px] -mt-2">
+            <div>
+              <div className="font-medium text-ink flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-verdant" />
+                SQLite — primary system of record
               </div>
-              <p className="text-slate-600 mt-0.5">
-                Holds all authoritative transactional data, claim forms, policy documents, raw execution trace envelopes, and regression obligations.
+              <p className="text-ink-soft mt-0.5 leading-relaxed">
+                Holds every claim, policy, trace envelope, and regression obligation authoritatively.
               </p>
             </div>
-
-            <div className="p-2.5 bg-slate-50 rounded-md border border-slate-200">
-              <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-sky-500"></span>
-                Neo4j: Causal Execution & Lineage Graph
+            <div>
+              <div className="font-medium text-ink flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-ledger" />
+                Neo4j — causal execution & lineage graph
               </div>
-              <p className="text-slate-600 mt-0.5">
-                Captures agent handoff DAGs, tool calls, multi-hop root-cause tracing, and the failure-to-ABI-to-release-gate dependency chain.
+              <p className="text-ink-soft mt-0.5 leading-relaxed">
+                Projects agent handoff chains and the failure → ABI → release-gate dependency tree.
               </p>
             </div>
-
-            <div className="p-2.5 bg-slate-50 rounded-md border border-slate-200">
-              <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                PRISM Observation & Evaluation
+            <div>
+              <div className="font-medium text-ink flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-brass" />
+                PRISM — observation & evaluation
               </div>
-              <p className="text-slate-600 mt-0.5">
-                Observes execution traces, computes evaluators, isolates failures, and proves before/after behavioral improvements.
+              <p className="text-ink-soft mt-0.5 leading-relaxed">
+                Observes execution traces, scores agent behavior, and proves before/after improvement.
               </p>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   );

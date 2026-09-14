@@ -42,24 +42,22 @@ export function RegressionPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">Regression Suite</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          CLAUDE.md §19: every discovered failure becomes a permanent regression test — it must never silently disappear
-        </p>
+        <h2 className="text-2xl font-medium text-ink">Regression suite</h2>
+        <p className="text-[13px] text-ink-soft mt-1">Every discovered failure becomes a permanent test — it must never silently disappear</p>
       </div>
 
-      <Card title="Rerun Suite Against a Candidate Version" icon={PlayCircle} tag="POST /api/regressions/run">
+      <Card title="Rerun the suite against a candidate version" icon={PlayCircle} tag="POST /api/regressions/run">
         <div className="flex flex-wrap items-end gap-3">
-          <label className="text-xs">
-            <span className="block text-slate-500 mb-1 font-mono">candidate_version</span>
-            <select value={candidateVersion} onChange={(e) => setCandidateVersion(e.target.value)} className="border border-slate-300 rounded px-2 py-1.5 text-xs font-mono">
+          <label className="text-[12px]">
+            <span className="block text-ink-faint mb-1">Candidate version</span>
+            <select value={candidateVersion} onChange={(e) => setCandidateVersion(e.target.value)} className="border border-line-strong rounded px-2.5 py-1.5 text-[13px] bg-paper-panel focus:border-ledger">
               <option value="v1">v1</option>
               <option value="v2">v2</option>
             </select>
           </label>
-          <ActionButton onClick={handleRun} loading={running}>Run Regression Suite</ActionButton>
+          <ActionButton onClick={handleRun} loading={running}>Run regression suite</ActionButton>
           {tests.length > 0 && (
-            <span className="text-xs font-mono text-slate-500">
+            <span className="text-[13px] text-ink-soft">
               {passCount}/{tests.length} passing
             </span>
           )}
@@ -67,37 +65,39 @@ export function RegressionPage() {
         <ErrorNote message={error} />
       </Card>
 
-      <Card title="Registered Regression Tests" icon={History}>
+      <Card title="Registered regression tests" icon={History} noPadding>
         {loading ? (
-          <p className="text-xs text-slate-500">Loading...</p>
+          <p className="text-[13px] text-ink-faint p-5">Loading…</p>
         ) : tests.length === 0 ? (
-          <EmptyState
-            title="No Regression Tests Registered Yet"
-            description="Run a failure scan on the Failures page first — every detected failure registers here automatically when compiled into an ABI."
-          />
+          <div className="p-5">
+            <EmptyState
+              title="No regression tests registered yet"
+              description="Run a failure scan on the Failures page first — every detected failure registers here automatically."
+            />
+          </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-[13px]">
               <thead>
-                <tr className="text-left text-slate-500 font-mono uppercase text-[10px] border-b border-slate-200">
-                  <th className="py-2 pr-4">Test ID</th>
-                  <th className="py-2 pr-4">Failure Type</th>
-                  <th className="py-2 pr-4">Expected Behavior</th>
-                  <th className="py-2 pr-4">ABI Introduced</th>
-                  <th className="py-2 pr-4">Last Tested</th>
-                  <th className="py-2 pr-4">Status</th>
+                <tr className="text-left text-ink-faint text-[11px] border-b border-line">
+                  <th className="py-2 pl-5 pr-4 font-normal">Test ID</th>
+                  <th className="py-2 pr-4 font-normal">Failure type</th>
+                  <th className="py-2 pr-4 font-normal">Expected behavior</th>
+                  <th className="py-2 pr-4 font-normal">ABI introduced</th>
+                  <th className="py-2 pr-4 font-normal">Last tested</th>
+                  <th className="py-2 pr-5 font-normal">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-line">
                 {tests.map((t) => (
                   <tr key={t.test_id}>
-                    <td className="py-2 pr-4 font-mono">{t.test_id}</td>
-                    <td className="py-2 pr-4"><Badge>{t.failure_type}</Badge></td>
-                    <td className="py-2 pr-4 text-slate-600 max-w-xs truncate" title={t.expected_behavior}>{t.expected_behavior}</td>
-                    <td className="py-2 pr-4 font-mono text-slate-500">{t.abi_version_introduced}</td>
-                    <td className="py-2 pr-4 font-mono text-slate-500">{t.last_tested_version || '—'}</td>
-                    <td className="py-2 pr-4">
-                      <Badge tone={t.still_passing ? 'emerald' : 'red'}>{t.still_passing ? 'PASSING' : 'FAILING'}</Badge>
+                    <td className="py-2 pl-5 pr-4 font-mono">{t.test_id}</td>
+                    <td className="py-2 pr-4"><Badge>{t.failure_type.replace(/_/g, ' ').toLowerCase()}</Badge></td>
+                    <td className="py-2 pr-4 text-ink-soft max-w-xs truncate" title={t.expected_behavior}>{t.expected_behavior}</td>
+                    <td className="py-2 pr-4 font-mono text-ink-faint">{t.abi_version_introduced}</td>
+                    <td className="py-2 pr-4 font-mono text-ink-faint">{t.last_tested_version || '—'}</td>
+                    <td className="py-2 pr-5">
+                      <Badge tone={t.still_passing ? 'emerald' : 'red'}>{t.still_passing ? 'Passing' : 'Failing'}</Badge>
                     </td>
                   </tr>
                 ))}

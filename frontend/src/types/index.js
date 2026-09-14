@@ -4,17 +4,17 @@
  * ENFORCE -> FIX / HARDEN -> PRISM PROVE -> REGRESSION TEST -> RELEASE GATE
  */
 export const LIFECYCLE_STAGES = [
-  { id: 'build', label: 'BUILD', description: 'Initialize agents and baseline policies' },
-  { id: 'attack', label: 'ATTACK', description: 'Execute matched counterfactuals & fault scenarios' },
-  { id: 'prism_observe', label: 'PRISM OBSERVE', description: 'Stream granular agent & tool traces to PRISM' },
-  { id: 'evaluate', label: 'EVALUATE', description: 'Evaluate execution traces with evaluators' },
-  { id: 'diagnose', label: 'DIAGNOSE', description: 'Isolate root cause of behavioral failure' },
-  { id: 'compile_abi', label: 'COMPILE BEHAVIOR ABI', description: 'Synthesize executable behavioral contract' },
-  { id: 'enforce', label: 'ENFORCE', description: 'Apply runtime context sanitization and checkpoints' },
-  { id: 'harden', label: 'FIX / HARDEN', description: 'Challenge against adversarial variation ladders' },
-  { id: 'prism_prove', label: 'PRISM PROVE', description: 'Fetch backing proof of before/after improvement' },
-  { id: 'regression', label: 'REGRESSION TEST', description: 'Verify candidate version against historical suite' },
-  { id: 'release_gate', label: 'RELEASE GATE', description: 'Strict PASS or BLOCKED deployment gating' },
+  { id: 'build', label: 'Build', description: 'Initialize agents and baseline policies' },
+  { id: 'attack', label: 'Attack', description: 'Execute matched counterfactuals & fault scenarios' },
+  { id: 'prism_observe', label: 'PRISM observe', description: 'Stream granular agent & tool traces to PRISM' },
+  { id: 'evaluate', label: 'Evaluate', description: 'Evaluate execution traces with evaluators' },
+  { id: 'diagnose', label: 'Diagnose', description: 'Isolate root cause of behavioral failure' },
+  { id: 'compile_abi', label: 'Compile behavior ABI', description: 'Synthesize executable behavioral contract' },
+  { id: 'enforce', label: 'Enforce', description: 'Apply runtime context sanitization and checkpoints' },
+  { id: 'harden', label: 'Fix / harden', description: 'Challenge against adversarial variation ladders' },
+  { id: 'prism_prove', label: 'PRISM prove', description: 'Fetch backing proof of before/after improvement' },
+  { id: 'regression', label: 'Regression test', description: 'Verify candidate version against historical suite' },
+  { id: 'release_gate', label: 'Release gate', description: 'Strict PASS or BLOCKED deployment gating' },
 ];
 
 /**

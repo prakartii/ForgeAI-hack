@@ -50,80 +50,83 @@ export function FailuresPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">Failures</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          CLAUDE.md §11–§15: fairness, workflow, evidence, and decision-correctness failure detection
-        </p>
+        <h2 className="text-2xl font-medium text-ink">Failures</h2>
+        <p className="text-[13px] text-ink-soft mt-1">Fairness, workflow, evidence, and decision-correctness failures detected from real agent output</p>
       </div>
 
-      <Card title="Run Failure Scan" icon={ScanSearch} tag="POST /api/failures/scan">
+      <Card title="Run a failure scan" icon={ScanSearch} tag="POST /api/failures/scan">
         <div className="flex flex-wrap items-end gap-3">
-          <label className="text-xs">
-            <span className="block text-slate-500 mb-1 font-mono">agent_version</span>
+          <label className="text-[12px]">
+            <span className="block text-ink-faint mb-1">Agent version</span>
             <select
               value={agentVersion}
               onChange={(e) => setAgentVersion(e.target.value)}
-              className="border border-slate-300 rounded px-2 py-1.5 text-xs font-mono"
+              className="border border-line-strong rounded px-2.5 py-1.5 text-[13px] bg-paper-panel focus:border-ledger"
             >
-              <option value="v1">v1 (controlled weaknesses)</option>
+              <option value="v1">v1 — controlled weaknesses</option>
               <option value="v2">v2</option>
             </select>
           </label>
           <ActionButton onClick={() => handleScan(false)} loading={scanning} variant="secondary">
-            Scan Unprotected
+            Scan unprotected
           </ActionButton>
           <ActionButton onClick={() => handleScan(true)} loading={scanning}>
-            Scan With Enforcement
+            Scan with enforcement
           </ActionButton>
         </div>
         <ErrorNote message={error} />
         {scanSummary && (
-          <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-            <div><div className="text-slate-500 font-mono">fairness</div><div className="font-mono font-bold">{scanSummary.fairness_failures}</div></div>
-            <div><div className="text-slate-500 font-mono">workflow</div><div className="font-mono font-bold">{scanSummary.workflow_failures}</div></div>
-            <div><div className="text-slate-500 font-mono">evidence</div><div className="font-mono font-bold">{scanSummary.evidence_failures}</div></div>
-            <div><div className="text-slate-500 font-mono">decision correctness</div><div className="font-mono font-bold">{scanSummary.decision_correctness_failures}</div></div>
+          <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4 text-[13px]">
+            <div><div className="text-ink-faint text-[11px] mb-1">Fairness</div><div className="font-serif text-xl">{scanSummary.fairness_failures}</div></div>
+            <div><div className="text-ink-faint text-[11px] mb-1">Workflow</div><div className="font-serif text-xl">{scanSummary.workflow_failures}</div></div>
+            <div><div className="text-ink-faint text-[11px] mb-1">Evidence</div><div className="font-serif text-xl">{scanSummary.evidence_failures}</div></div>
+            <div><div className="text-ink-faint text-[11px] mb-1">Decision correctness</div><div className="font-serif text-xl">{scanSummary.decision_correctness_failures}</div></div>
           </div>
         )}
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card title="Detected Failures" icon={AlertTriangle}>
+        <Card title="Detected failures" icon={AlertTriangle} noPadding>
           {loading ? (
-            <p className="text-xs text-slate-500">Loading...</p>
+            <p className="text-[13px] text-ink-faint p-5">Loading…</p>
           ) : failures.length === 0 ? (
-            <EmptyState title="No Failures Detected Yet" description="Run a scan above against the unprotected agent version to reproduce the controlled fairness/workflow bugs." />
+            <div className="p-5">
+              <EmptyState title="No failures detected yet" description="Run a scan above against the unprotected agent version to reproduce the controlled fairness and workflow bugs." />
+            </div>
           ) : (
-            <div className="divide-y divide-slate-100 max-h-[480px] overflow-y-auto">
+            <div className="divide-y divide-line max-h-[480px] overflow-y-auto">
               {failures.map((f) => (
                 <button
                   key={f.failure_id}
                   onClick={() => setSelected(f)}
-                  className={`w-full text-left py-3 first:pt-0 hover:bg-slate-50 px-2 -mx-2 rounded ${selected?.failure_id === f.failure_id ? 'bg-slate-50' : ''}`}
+                  className={`w-full text-left px-5 py-3 transition-colors ${selected?.failure_id === f.failure_id ? 'bg-paper-sunk' : 'hover:bg-paper-sunk/60'}`}
                 >
-                  <div className="flex items-center gap-2">
-                    <Badge tone={TYPE_TONE[f.failure_type] || 'slate'}>{f.failure_type}</Badge>
-                    <Badge tone={f.severity === 'CRITICAL' ? 'red' : 'amber'}>{f.severity}</Badge>
-                    <span className="text-[11px] font-mono text-slate-400">{f.affected_agent}</span>
+                  <div className="flex items-center gap-3">
+                    <Badge tone={TYPE_TONE[f.failure_type] || 'slate'}>{f.failure_type.replace(/_/g, ' ').toLowerCase()}</Badge>
+                    <Badge tone={f.severity === 'CRITICAL' ? 'red' : 'amber'}>{f.severity.toLowerCase()}</Badge>
+                    <span className="text-[11px] font-mono text-ink-faint">{f.affected_agent}</span>
                   </div>
-                  <p className="text-xs text-slate-700 mt-1">{f.description}</p>
+                  <p className="text-[13px] text-ink mt-1.5 leading-snug">{f.description}</p>
                 </button>
               ))}
             </div>
           )}
         </Card>
 
-        <Card title="Diagnosis Detail">
+        <Card title="Diagnosis detail">
           {!selected ? (
-            <p className="text-xs text-slate-500">Select a failure to inspect its diagnosis, scenario, and PRISM evidence link.</p>
+            <p className="text-[13px] text-ink-faint">Select a failure to inspect its diagnosis, scenario, and PRISM evidence link.</p>
           ) : (
-            <div className="space-y-3 text-xs">
-              <div><span className="text-slate-500 font-mono">failure_id: </span><span className="font-mono">{selected.failure_id}</span></div>
-              <div><span className="text-slate-500 font-mono">scenario_id: </span><span className="font-mono">{selected.scenario_id || '-'}</span></div>
-              <div><span className="text-slate-500 font-mono">prism_session_id: </span><span className="font-mono">{selected.prism_session_id || 'unavailable (PRISM not configured)'}</span></div>
+            <div className="space-y-3 text-[13px]">
+              <div className="grid grid-cols-[120px_1fr] gap-1">
+                <span className="text-ink-faint">Failure ID</span><span className="font-mono">{selected.failure_id}</span>
+                <span className="text-ink-faint">Scenario</span><span className="font-mono">{selected.scenario_id || '—'}</span>
+                <span className="text-ink-faint">PRISM session</span>
+                <span className="font-mono text-ink-faint">{selected.prism_session_id || 'unavailable — PRISM not configured'}</span>
+              </div>
               <div>
-                <span className="text-slate-500 font-mono block mb-1">diagnosis:</span>
-                <pre className="bg-slate-50 border border-slate-200 rounded p-2 overflow-x-auto text-[11px] font-mono">
+                <span className="text-ink-faint block mb-1.5">Diagnosis</span>
+                <pre className="bg-paper-sunk border border-line rounded p-3 overflow-x-auto text-[11px] font-mono leading-relaxed">
                   {JSON.stringify(selected.diagnosis, null, 2)}
                 </pre>
               </div>

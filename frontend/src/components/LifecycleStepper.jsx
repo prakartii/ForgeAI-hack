@@ -1,16 +1,12 @@
 import React from 'react';
 import { LIFECYCLE_STAGES } from '../types';
-import { ChevronRight } from 'lucide-react';
 
 export function LifecycleStepper({ currentStage = 'build' }) {
-  const currentIndex = LIFECYCLE_STAGES.findIndex(s => s.id === currentStage);
+  const currentIndex = LIFECYCLE_STAGES.findIndex((s) => s.id === currentStage);
 
   return (
-    <div className="bg-white border-b border-slate-200 px-6 py-2.5 overflow-x-auto">
-      <div className="flex items-center min-w-max text-xs font-mono">
-        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-3 font-sans">
-          Lifecycle:
-        </span>
+    <div className="bg-paper-panel border-b border-line px-6 py-2 overflow-x-auto">
+      <div className="flex items-center min-w-max">
         {LIFECYCLE_STAGES.map((stage, idx) => {
           const isCurrent = idx === currentIndex;
           const isCompleted = idx < currentIndex;
@@ -18,22 +14,16 @@ export function LifecycleStepper({ currentStage = 'build' }) {
           return (
             <React.Fragment key={stage.id}>
               <div
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded transition-colors ${
-                  isCurrent
-                    ? 'bg-slate-900 text-white font-semibold shadow-sm'
-                    : isCompleted
-                    ? 'text-emerald-700 bg-emerald-50/50'
-                    : 'text-slate-500 hover:text-slate-800'
+                className={`flex items-center gap-1.5 px-2 py-1 text-[12px] ${
+                  isCurrent ? 'text-ink font-medium' : isCompleted ? 'text-verdant-700' : 'text-ink-faint'
                 }`}
                 title={stage.description}
               >
-                <span className={`text-[10px] ${isCurrent ? 'text-slate-300' : 'text-slate-400'}`}>
-                  {idx + 1}
-                </span>
+                <span className="font-serif text-[11px]">{idx + 1}</span>
                 <span>{stage.label}</span>
               </div>
               {idx < LIFECYCLE_STAGES.length - 1 && (
-                <ChevronRight className="w-3.5 h-3.5 text-slate-300 mx-0.5 flex-shrink-0" />
+                <span className="text-line-strong mx-0.5 flex-shrink-0">·</span>
               )}
             </React.Fragment>
           );

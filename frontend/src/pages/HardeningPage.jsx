@@ -34,60 +34,56 @@ export function HardeningPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">Hardening Ladders</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          CLAUDE.md §18: adversarial difficulty ladders proving a fix generalizes, not just one reproduced example
-        </p>
+        <h2 className="text-2xl font-medium text-ink">Hardening ladders</h2>
+        <p className="text-[13px] text-ink-soft mt-1">Adversarial difficulty ladders proving a fix generalizes, not just one reproduced example</p>
       </div>
 
-      <Card title="Run Fairness Hardening Ladder" icon={TrendingUp} tag="GET /api/hardening/results">
+      <Card title="Run the fairness hardening ladder" icon={TrendingUp} tag="GET /api/hardening/results">
         <div className="flex flex-wrap items-end gap-3">
-          <label className="text-xs">
-            <span className="block text-slate-500 mb-1 font-mono">agent_version</span>
-            <select value={agentVersion} onChange={(e) => setAgentVersion(e.target.value)} className="border border-slate-300 rounded px-2 py-1.5 text-xs font-mono">
+          <label className="text-[12px]">
+            <span className="block text-ink-faint mb-1">Agent version</span>
+            <select value={agentVersion} onChange={(e) => setAgentVersion(e.target.value)} className="border border-line-strong rounded px-2.5 py-1.5 text-[13px] bg-paper-panel focus:border-ledger">
               <option value="v1">v1</option>
               <option value="v2">v2</option>
             </select>
           </label>
-          <label className="text-xs flex items-center gap-1.5 pb-1.5">
+          <label className="text-[12px] flex items-center gap-1.5 pb-1.5">
             <input type="checkbox" checked={enforced} onChange={(e) => setEnforced(e.target.checked)} />
-            <span className="text-slate-600">enforce compiled fairness ABI</span>
+            <span className="text-ink-soft">Enforce compiled fairness ABI</span>
           </label>
-          <ActionButton onClick={run} loading={loading}>Run Ladder (25 groups × 4 levels)</ActionButton>
+          <ActionButton onClick={run} loading={loading}>Run ladder — 25 groups × 4 levels</ActionButton>
         </div>
         <ErrorNote message={error} />
 
         {results && (
-          <div className="mt-5">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+          <div className="mt-5 grid grid-cols-2 md:grid-cols-5 gap-4">
+            <MetricTile
+              label="Challenge robustness"
+              value={pct(results.challenge_robustness)}
+              tone={results.challenge_robustness === 1 ? 'verdant' : 'seal'}
+            />
+            {['L1', 'L2', 'L3', 'L4'].map((level) => (
               <MetricTile
-                label="Challenge Robustness"
-                value={pct(results.challenge_robustness)}
-                tone={results.challenge_robustness === 1 ? 'emerald' : 'red'}
+                key={level}
+                label={level}
+                value={pct(results.per_level[level]?.pass_rate)}
+                sub={`${results.per_level[level]?.passed}/${results.per_level[level]?.total} groups`}
+                tone={results.per_level[level]?.pass_rate === 1 ? 'verdant' : 'seal'}
               />
-              {['L1', 'L2', 'L3', 'L4'].map((level) => (
-                <MetricTile
-                  key={level}
-                  label={level}
-                  value={pct(results.per_level[level]?.pass_rate)}
-                  sub={`${results.per_level[level]?.passed}/${results.per_level[level]?.total} groups`}
-                  tone={results.per_level[level]?.pass_rate === 1 ? 'emerald' : 'red'}
-                />
-              ))}
-            </div>
+            ))}
           </div>
         )}
       </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {ladders.map((ladder, idx) => (
-          <Card key={idx} icon={ShieldAlert} title={`${ladder.track} Challenge Track`}>
+          <Card key={idx} icon={ShieldAlert} title={`${ladder.track.toLowerCase()} challenge track`}>
             {ladder.levels && (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {ladder.levels.map((lvl) => (
-                  <div key={lvl.level} className="p-3 bg-slate-50 rounded border border-slate-200 flex items-center justify-between text-xs">
-                    <span className="font-mono font-bold text-slate-700">Level {lvl.level}</span>
-                    <span className="text-slate-600 font-medium">{lvl.description}</span>
+                  <div key={lvl.level} className="flex items-center justify-between text-[13px] py-1">
+                    <span className="text-ink-faint">Level {lvl.level}</span>
+                    <span className="text-ink">{lvl.description}</span>
                   </div>
                 ))}
               </div>
@@ -95,8 +91,8 @@ export function HardeningPage() {
             {ladder.challenges && (
               <div className="space-y-2">
                 {ladder.challenges.map((challenge, cIdx) => (
-                  <div key={cIdx} className="p-2.5 bg-slate-50 rounded border border-slate-200 text-xs text-slate-700 font-mono">
-                    • {challenge}
+                  <div key={cIdx} className="text-[13px] text-ink py-1">
+                    {challenge}
                   </div>
                 ))}
               </div>

@@ -9,15 +9,16 @@ function layoutNodes(rawNodes) {
   return rawNodes.map((node, idx) => ({
     id: node.id,
     data: { label: node.data?.label || node.id },
-    position: { x: idx * 220, y: 80 },
+    position: { x: idx * 210, y: 80 },
     style: {
-      border: node.data?.errors?.length ? '1px solid #dc2626' : '1px solid #cbd5e1',
-      background: node.data?.errors?.length ? '#fef2f2' : '#ffffff',
-      borderRadius: 8,
-      fontSize: 11,
-      fontFamily: 'monospace',
+      border: node.data?.errors?.length ? '1px solid #A6341E' : '1px solid #E1DFD6',
+      background: node.data?.errors?.length ? '#F8E9E5' : '#FCFCFA',
+      color: '#171A21',
+      borderRadius: 4,
+      fontSize: 12,
+      fontFamily: '"IBM Plex Mono", monospace',
       padding: 8,
-      width: 190,
+      width: 180,
     },
   }));
 }
@@ -28,8 +29,8 @@ function layoutEdges(rawEdges) {
     source: edge.source,
     target: edge.target,
     animated: true,
-    markerEnd: { type: MarkerType.ArrowClosed },
-    style: { stroke: '#94a3b8' },
+    markerEnd: { type: MarkerType.ArrowClosed, color: '#8A8F9C' },
+    style: { stroke: '#8A8F9C' },
   }));
 }
 
@@ -63,36 +64,34 @@ export function GraphPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold tracking-tight text-slate-900">Causal Execution Graph</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          CLAUDE.md §5 & §10: Claim → Intake → Adjudication → Explanation → Verification → Customer Communication
-        </p>
+        <h2 className="text-2xl font-medium text-ink">Execution graph</h2>
+        <p className="text-[13px] text-ink-soft mt-1">Claim → Intake → Adjudication → Explanation → Verification → Customer communication</p>
       </div>
 
-      <Card title="Load a Claim's Trace" icon={Search}>
+      <Card title="Load a claim's trace" icon={Search}>
         <div className="flex flex-wrap items-end gap-3">
-          <label className="text-xs">
-            <span className="block text-slate-500 mb-1 font-mono">claim_id</span>
+          <label className="text-[12px]">
+            <span className="block text-ink-faint mb-1">Claim ID</span>
             <input
               value={claimId}
               onChange={(e) => setClaimId(e.target.value)}
-              className="border border-slate-300 rounded px-2 py-1.5 text-xs font-mono w-40"
+              className="border border-line-strong rounded px-2.5 py-1.5 text-[13px] font-mono w-40 bg-paper-panel focus:border-ledger"
             />
           </label>
-          <ActionButton onClick={load} loading={loading}>Load Graph</ActionButton>
-          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-slate-50 border border-slate-200 text-xs font-mono text-slate-600">
-            <Database className="w-3.5 h-3.5 text-sky-600" />
+          <ActionButton onClick={load} loading={loading}>Load graph</ActionButton>
+          <span className="inline-flex items-center gap-2 text-[12px] text-ink-faint">
+            <Database className="w-3.5 h-3.5" />
             Neo4j: {graphStatus?.status || 'standby'}
-            {graph?.source && <span className="text-slate-400"> · source: {graph.source}</span>}
+            {graph?.source && <span>· source: {graph.source}</span>}
           </span>
         </div>
         <ErrorNote message={error} />
       </Card>
 
-      <Card title="Execution Graph" icon={GitFork} noPadding>
+      <Card title="Execution graph" icon={GitFork} noPadding>
         <div style={{ height: 500 }}>
           {nodes.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-xs text-slate-400">
+            <div className="h-full flex items-center justify-center text-[13px] text-ink-faint">
               No trace events for this claim yet — run it from Agent Runs first.
             </div>
           ) : (
@@ -103,7 +102,7 @@ export function GraphPage() {
               fitViewOptions={{ padding: 0.3, maxZoom: 1.2 }}
               proOptions={{ hideAttribution: true }}
             >
-              <Background gap={16} color="#e2e8f0" />
+              <Background gap={16} color="#E1DFD6" />
               <Controls showInteractive={false} />
             </ReactFlow>
           )}
