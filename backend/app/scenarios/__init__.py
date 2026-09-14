@@ -5,4 +5,12 @@ Generates controlled testing scenarios: FAIRNESS, WORKFLOW, EVIDENCE, DECISION_C
 Responsible for matched counterfactual pair generation holding legitimate facts constant.
 """
 
-__all__ = []
+from app.scenarios.csv_loader import load_dataset, verify_oracle_consistency
+from app.scenarios.oracle import OracleResult, evaluate_claim_oracle
+
+__all__ = [
+    "load_dataset",
+    "verify_oracle_consistency",
+    "OracleResult",
+    "evaluate_claim_oracle",
+]
