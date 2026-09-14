@@ -68,3 +68,4 @@ logs/
 
 # Playwright MCP test artifacts
 .playwright-mcp/
+backend/demo_run.db
