@@ -100,6 +100,23 @@ export const submitClaim = ({ claimId, protected: isProtected }) =>
   postJSON(`/api/demo/submit?claim_id=${encodeURIComponent(claimId)}&protected=${isProtected}`);
 export const resolveImageUrl = (path) => (path ? `${API_BASE_URL}${path}` : null);
 
+export const fetchClaimOptions = () => getJSON('/api/demo/claim-options');
+export const submitCustomClaim = async (formValues) => {
+  const formData = new FormData();
+  Object.entries(formValues).forEach(([key, value]) => {
+    if (value !== null && value !== undefined) formData.append(key, value);
+  });
+  const response = await fetch(`${API_BASE_URL}/api/demo/claims/custom`, {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+    body: formData,
+  });
+  if (!response.ok) {
+    throw new Error(`POST /api/demo/claims/custom failed with status: ${response.status}`);
+  }
+  return response.json();
+};
+
 // --- Release Gate ---
 export const fetchGateResults = () => getJSON('/api/gates');
 export const runReleaseGate = (params = {}) => {

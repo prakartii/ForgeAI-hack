@@ -23,6 +23,9 @@ from app.models.domain import ClaimModel
 
 def run_intake(claim: ClaimModel) -> dict[str, Any]:
     d = claim.details
+    if d.get("source") == "user_submitted":
+        return _run_intake_user_submitted(claim, d)
+
     image_required = bool(d.get("image_required"))
     has_image = d.get("image_quality_gt", "") != ""
 
@@ -78,6 +81,52 @@ def run_intake(claim: ClaimModel) -> dict[str, Any]:
         "damage_severity": severity,
         "estimated_repair_cost": float(d.get("repair_estimate_inr") or 0),
         "evidence_references": [ref for ref in [d.get("damage_part_gt")] if ref],
+        "evidence_completeness": evidence_completeness,
+        "action": action,
+    }
+
+
+def _run_intake_user_submitted(claim: ClaimModel, d: dict[str, Any]) -> dict[str, Any]:
+    """
+    A claim entered directly by a real user through the customer portal,
+    not one of the dataset's pre-labeled scenarios. There is no vision
+    ground truth to abstain against here (CLAUDE.md §17: a real
+    multimodal call is out of scope) -- honesty means basing the
+    structured claim only on what the user actually provided (their
+    photo's presence, their declared damage facts), not pretending a
+    photo was analyzed when it wasn't.
+    """
+    has_photo = bool(d.get("has_photo"))
+    evidence_complete = bool(d.get("required_evidence_complete", True))
+
+    if not has_photo:
+        return {
+            "claim_facts": {"claim_id": claim.claim_id, "description": d.get("claim_description", "")},
+            "accident_facts": {"peril": claim.peril},
+            "policy_facts": {"policy_id": claim.policy_id},
+            "damage": "UNRESOLVED",
+            "damage_severity": "UNKNOWN",
+            "estimated_repair_cost": float(d.get("repair_estimate_inr") or 0),
+            "evidence_references": [],
+            "evidence_completeness": "missing_image",
+            "action": "REQUEST_IMAGE_OR_ESCALATE",
+        }
+
+    if not evidence_complete:
+        action = "REQUEST_MISSING_EVIDENCE_OR_ESCALATE"
+        evidence_completeness = "partial"
+    else:
+        action = "STRUCTURE_CLAIM"
+        evidence_completeness = "complete"
+
+    return {
+        "claim_facts": {"claim_id": claim.claim_id, "description": d.get("claim_description", "")},
+        "accident_facts": {"peril": claim.peril},
+        "policy_facts": {"policy_id": claim.policy_id},
+        "damage": d.get("damage_part") or claim.damage_type,
+        "damage_severity": d.get("damage_severity", "MEDIUM"),
+        "estimated_repair_cost": float(d.get("repair_estimate_inr") or 0),
+        "evidence_references": [ref for ref in [d.get("damage_part")] if ref],
         "evidence_completeness": evidence_completeness,
         "action": action,
     }

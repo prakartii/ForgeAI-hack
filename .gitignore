@@ -69,3 +69,6 @@ logs/
 # Playwright MCP test artifacts
 .playwright-mcp/
 backend/demo_run.db
+
+# Customer-portal user photo uploads (real user content, never commit)
+data/uploads/

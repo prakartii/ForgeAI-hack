@@ -11,6 +11,7 @@ from app.api.router import api_router, health_router
 settings = get_settings()
 
 IMAGES_DIR = Path(__file__).resolve().parents[2] / "data" / "images"
+UPLOADS_DIR = Path(__file__).resolve().parents[2] / "data" / "uploads"
 
 
 @asynccontextmanager
@@ -64,6 +65,12 @@ app.include_router(api_router)
 # real claim evidence images, not placeholders.
 if IMAGES_DIR.exists():
     app.mount("/media/images", StaticFiles(directory=str(IMAGES_DIR)), name="claim_images")
+
+# Serve photos real users upload through the customer portal's "new claim"
+# flow. Created eagerly (rather than only when the first photo lands) so
+# the mount always has a directory to point at.
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/media/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="claim_uploads")
 
 
 @app.get("/")

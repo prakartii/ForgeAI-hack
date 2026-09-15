@@ -49,3 +49,65 @@ def test_submit_claim_unprotected_vs_protected(client):
 def test_submit_unknown_claim_returns_404(client):
     response = client.post("/api/demo/submit?claim_id=NOT_A_REAL_CLAIM")
     assert response.status_code == 404
+
+
+def test_claim_options_reflect_real_dataset_vocab(client):
+    response = client.get("/api/demo/claim-options")
+    assert response.status_code == 200
+    options = response.json()
+    assert "COLLISION" in options["perils"]
+    assert len(options["policy_tiers"]) == 3
+
+
+def test_submit_custom_claim_without_photo_escalates_for_missing_image(client):
+    response = client.post(
+        "/api/demo/claims/custom",
+        data={
+            "vehicle_make": "Tata",
+            "vehicle_model": "Punch",
+            "peril": "COLLISION",
+            "damage_part": "BUMPER",
+            "damage_severity": "MEDIUM",
+            "description": "Someone hit my bumper in a parking lot.",
+            "repair_estimate_inr": "15000",
+            "policy_tier": "standard",
+        },
+    )
+    assert response.status_code == 200
+    claim = response.json()
+    assert claim["claim_id"].startswith("USER_")
+    assert claim["image_url"] is None
+
+    result = client.post(f"/api/demo/submit?claim_id={claim['claim_id']}&protected=true").json()
+    assert result["status"] == "COMPLETED"
+    assert result["decision"] == "ESCALATE"  # no photo -> can't verify damage yet
+
+
+def test_submit_custom_claim_with_photo_gets_approved(client, tmp_path):
+    photo_path = tmp_path / "damage.jpg"
+    photo_path.write_bytes(b"fake-jpeg-bytes")
+
+    with open(photo_path, "rb") as photo_file:
+        response = client.post(
+            "/api/demo/claims/custom",
+            data={
+                "vehicle_make": "Hyundai",
+                "vehicle_model": "Creta",
+                "peril": "COLLISION",
+                "damage_part": "DOOR",
+                "damage_severity": "LOW",
+                "description": "Scraped the door against a pillar.",
+                "repair_estimate_inr": "8000",
+                "policy_tier": "premium",
+            },
+            files={"photo": ("damage.jpg", photo_file, "image/jpeg")},
+        )
+    assert response.status_code == 200
+    claim = response.json()
+    assert claim["image_url"] == f"/media/uploads/{claim['claim_id']}.jpg"
+
+    result = client.post(f"/api/demo/submit?claim_id={claim['claim_id']}&protected=true").json()
+    assert result["status"] == "COMPLETED"
+    assert result["decision"] == "APPROVE"
+    assert result["payout_inr"] == 7000  # repair estimate (8000) minus the premium tier's 1000 deductible
+    assert result["explanation"] is not None

@@ -5,10 +5,11 @@ customer portal talks to -- it wraps the same real agent pipeline the
 engineering console uses, but returns claimant-friendly shapes (plain
 decision/payout/explanation, no internal IDs or ABI plumbing).
 """
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -18,6 +19,20 @@ from app.models.scenario import CounterfactualPairModel, ScenarioModel
 from app.agents.orchestrator import run_claim_pipeline
 
 router = APIRouter(prefix="/demo", tags=["Customer Portal"])
+
+UPLOADS_DIR = Path(__file__).resolve().parents[3] / "data" / "uploads"
+
+# A handful of realistic policy tiers a real user could plausibly pick,
+# built from the deductible/coverage-limit combinations actually present
+# in the synthetic dataset (data/scenarios/*.csv), not invented numbers.
+_POLICY_TIERS = {
+    "basic": {"deductible": 5000, "coverage_limit": 100000},
+    "standard": {"deductible": 2500, "coverage_limit": 200000},
+    "premium": {"deductible": 1000, "coverage_limit": 500000},
+}
+_COVERED_PERILS = ["COLLISION", "FIRE", "FLOOD", "THEFT", "VANDALISM"]
+_DAMAGE_PARTS = ["BUMPER", "DOOR", "GLASS", "HEAD_LAMP", "TAIL_LAMP", "UNSPECIFIED"]
+_DAMAGE_SEVERITIES = ["LOW", "MEDIUM", "HIGH"]
 
 # A hand-picked, diverse set of claims for the general "file a claim"
 # picker: a mix of vehicle types and outcomes (clean approval, denial,
@@ -131,6 +146,111 @@ def _humanize_explanation(decision: str, reason: str, adjudication: Dict[str, An
     if decision == "DENY":
         return f"We weren't able to approve this claim because {why}."
     return f"We've escalated this claim for a closer look because {why}."
+
+
+@router.get("/claim-options", response_model=Dict[str, Any])
+def get_claim_form_options() -> Dict[str, Any]:
+    """Real, dataset-derived vocab for the new-claim form's dropdowns."""
+    return {
+        "perils": _COVERED_PERILS,
+        "damage_parts": _DAMAGE_PARTS,
+        "damage_severities": _DAMAGE_SEVERITIES,
+        "policy_tiers": [{"id": k, **v} for k, v in _POLICY_TIERS.items()],
+    }
+
+
+@router.post("/claims/custom", response_model=Dict[str, Any])
+def submit_custom_claim(
+    vehicle_make: str = Form(...),
+    vehicle_model: str = Form(...),
+    peril: str = Form(...),
+    damage_part: str = Form(...),
+    damage_severity: str = Form(...),
+    description: str = Form(""),
+    repair_estimate_inr: float = Form(...),
+    policy_tier: str = Form("standard"),
+    photo: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Creates a brand-new claim from real user input (not one of the
+    dataset's pre-loaded scenarios) -- a genuine policy, a genuine
+    claim, and (if provided) a genuine uploaded photo -- then returns it
+    in the same shape `/demo/claims` returns, ready to hand straight to
+    `/demo/submit`.
+    """
+    if peril not in _COVERED_PERILS:
+        raise HTTPException(status_code=400, detail=f"unknown peril '{peril}'")
+    if damage_part not in _DAMAGE_PARTS:
+        raise HTTPException(status_code=400, detail=f"unknown damage_part '{damage_part}'")
+    tier = _POLICY_TIERS.get(policy_tier, _POLICY_TIERS["standard"])
+
+    claim_id = f"USER_{uuid.uuid4().hex[:10]}"
+    policy_id = f"POL_{claim_id}"
+
+    db.add(PolicyModel(
+        policy_id=policy_id,
+        is_active=True,
+        covered_perils=[peril],
+        deductible=tier["deductible"],
+        coverage_limit=tier["coverage_limit"],
+        exclusions=[],
+        metadata_info={"policy_status": "ACTIVE", "tier": policy_tier},
+    ))
+
+    image_url = None
+    has_photo = False
+    if photo is not None and photo.filename:
+        UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+        suffix = Path(photo.filename).suffix or ".jpg"
+        stored_name = f"{claim_id}{suffix}"
+        with open(UPLOADS_DIR / stored_name, "wb") as f:
+            f.write(photo.file.read())
+        has_photo = True
+        image_url = f"/media/uploads/{stored_name}"
+
+    db.add(ClaimModel(
+        claim_id=claim_id,
+        policy_id=policy_id,
+        peril=peril,
+        damage_type=damage_part,
+        verified_damage=repair_estimate_inr,
+        evidence_status="complete" if has_photo else "incomplete",
+        proxy_variants={},
+        details={
+            "source": "user_submitted",
+            "vehicle_make": vehicle_make,
+            "vehicle_model": vehicle_model,
+            "damage_part": damage_part,
+            "damage_severity": damage_severity,
+            "claim_description": description,
+            "repair_estimate_inr": repair_estimate_inr,
+            "has_photo": has_photo,
+            "required_evidence_complete": has_photo,
+        },
+    ))
+
+    if has_photo:
+        db.add(DocumentModel(
+            document_id=f"DOC_{claim_id}_IMG",
+            claim_id=claim_id,
+            doc_type="damage_photo",
+            file_path=str(UPLOADS_DIR / Path(image_url).name),
+            evidence_references=[damage_part],
+        ))
+
+    db.commit()
+
+    return {
+        "claim_id": claim_id,
+        "vehicle_make": vehicle_make,
+        "vehicle_model": vehicle_model,
+        "peril": peril,
+        "damage_part": damage_part,
+        "damage_type": damage_part,
+        "description": description,
+        "image_url": image_url,
+    }
 
 
 @router.post("/submit", response_model=Dict[str, Any])
