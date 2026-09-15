@@ -1,0 +1,488 @@
+<title>FailureFoundry Playbook</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --paper:#EDEEE5;
+    --paper-raised:#F6F6EF;
+    --ink:#1B2129;
+    --ink-soft:#3A4149;
+    --slate:#5B6570;
+    --rule:#C7C9B7;
+    --rule-strong:#A7AA95;
+    --brass:#8C6A28;
+    --brass-ink:#5F4A1C;
+    --verdant:#33613F;
+    --verdant-soft:#E4EBDF;
+    --rust:#96382A;
+    --rust-soft:#F1E1DC;
+    --focus:#1B2129;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#181A16;
+      --paper-raised:#212319;
+      --ink:#EDEEE3;
+      --ink-soft:#C7C9B9;
+      --slate:#9A9D8D;
+      --rule:#3A3D30;
+      --rule-strong:#4C5040;
+      --brass:#D4A94A;
+      --brass-ink:#E9C978;
+      --verdant:#8FBF9B;
+      --verdant-soft:#22301F;
+      --rust:#D98D7C;
+      --rust-soft:#331E17;
+      --focus:#EDEEE3;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#181A16;
+    --paper-raised:#212319;
+    --ink:#EDEEE3;
+    --ink-soft:#C7C9B9;
+    --slate:#9A9D8D;
+    --rule:#3A3D30;
+    --rule-strong:#4C5040;
+    --brass:#D4A94A;
+    --brass-ink:#E9C978;
+    --verdant:#8FBF9B;
+    --verdant-soft:#22301F;
+    --rust:#D98D7C;
+    --rust-soft:#331E17;
+    --focus:#EDEEE3;
+  }
+
+  *{box-sizing:border-box;}
+  html{color-scheme:light dark;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+    padding-inline:20px;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;}
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible{
+    outline:2px solid var(--focus);
+    outline-offset:3px;
+  }
+  ::selection{background:var(--brass); color:var(--paper);}
+
+  .sheet{
+    max-width:760px;
+    margin:0 auto;
+    padding-block:48px 80px;
+  }
+
+  /* ---------- Masthead ---------- */
+  .masthead{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    padding-bottom:28px;
+    border-bottom:2px solid var(--ink);
+  }
+  .masthead .kicker{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12.5px;
+    letter-spacing:0.06em;
+    color:var(--slate);
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:6px 16px;
+  }
+  h1.title{
+    font-family:"Fraunces", Georgia, serif;
+    font-optical-sizing:auto;
+    font-weight:600;
+    font-size:clamp(2.1rem, 6vw, 3.1rem);
+    line-height:1.02;
+    margin:6px 0 2px;
+    text-wrap:balance;
+    letter-spacing:-0.01em;
+  }
+  .subtitle{
+    font-size:16.5px;
+    color:var(--ink-soft);
+    max-width:56ch;
+    line-height:1.5;
+  }
+  .thesis{
+    margin-top:22px;
+    font-family:"Fraunces", Georgia, serif;
+    font-style:italic;
+    font-weight:500;
+    font-size:19px;
+    line-height:1.5;
+    color:var(--ink);
+    padding-left:18px;
+    border-left:3px solid var(--brass);
+  }
+  .thesis cite{
+    display:block;
+    font-family:"IBM Plex Mono", monospace;
+    font-style:normal;
+    font-size:11.5px;
+    color:var(--slate);
+    margin-top:8px;
+    letter-spacing:0.03em;
+  }
+
+  /* ---------- Section scaffolding ---------- */
+  section{
+    padding-block:34px;
+    border-bottom:1px solid var(--rule);
+  }
+  section:last-of-type{border-bottom:none;}
+  .sec-head{
+    display:flex;
+    align-items:baseline;
+    gap:12px;
+    margin-bottom:18px;
+  }
+  .sec-num{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:13px;
+    color:var(--brass);
+    font-weight:600;
+    white-space:nowrap;
+  }
+  h2{
+    font-family:"Fraunces", Georgia, serif;
+    font-weight:600;
+    font-size:1.55rem;
+    margin:0;
+    text-wrap:balance;
+  }
+  h3{
+    font-family:"Fraunces", Georgia, serif;
+    font-weight:600;
+    font-size:1.12rem;
+    margin:26px 0 10px;
+  }
+  p{ line-height:1.62; font-size:15.5px; color:var(--ink-soft); max-width:66ch; margin:0 0 12px;}
+  p.lede{ color:var(--ink); font-size:16.5px; }
+  strong{color:var(--ink); font-weight:600;}
+  code, .mono{ font-family:"IBM Plex Mono", monospace; font-size:0.92em; }
+
+  /* ---------- Demo runbook ---------- */
+  .beat{
+    display:grid;
+    grid-template-columns:56px 1fr;
+    gap:14px;
+    padding-block:14px;
+    border-top:1px solid var(--rule);
+  }
+  .beat:first-of-type{border-top:none;}
+  .beat .t{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:12.5px;
+    color:var(--slate);
+    padding-top:3px;
+    font-variant-numeric:tabular-nums;
+  }
+  .beat h4{
+    font-family:"Source Sans 3", sans-serif;
+    font-weight:700;
+    font-size:15px;
+    margin:0 0 4px;
+    color:var(--ink);
+  }
+  .beat p{margin:0; font-size:14.5px;}
+  .beat .surface{
+    display:inline-block;
+    margin-top:6px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11px;
+    color:var(--brass-ink);
+    background:var(--paper-raised);
+    border:1px solid var(--rule-strong);
+    padding:2px 7px;
+    border-radius:3px;
+  }
+
+  /* ---------- Feature ledger ---------- */
+  .ledger{
+    display:flex;
+    flex-direction:column;
+    border:1px solid var(--rule-strong);
+    border-radius:4px;
+    overflow:hidden;
+    background:var(--paper-raised);
+  }
+  .ledger-row{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:2px 18px;
+    padding:14px 16px;
+    border-bottom:1px solid var(--rule);
+  }
+  @media (min-width:560px){
+    .ledger-row{ grid-template-columns:190px 1fr; align-items:start; }
+  }
+  .ledger-row:last-child{border-bottom:none;}
+  .ledger-key{
+    font-weight:700;
+    font-size:14px;
+    color:var(--ink);
+  }
+  .ledger-key .where{
+    display:block;
+    font-family:"IBM Plex Mono", monospace;
+    font-weight:400;
+    font-size:11px;
+    color:var(--slate);
+    margin-top:2px;
+  }
+  .ledger-val{ font-size:14px; color:var(--ink-soft); line-height:1.55; }
+
+  /* ---------- Status pills ---------- */
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11px;
+    font-weight:600;
+    padding:2px 8px;
+    border-radius:3px;
+    letter-spacing:0.02em;
+  }
+  .pill.real{ background:var(--verdant-soft); color:var(--verdant); }
+  .pill.gap{ background:var(--rust-soft); color:var(--rust); }
+
+  /* ---------- Two-col compare ---------- */
+  .versus{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:14px;
+  }
+  @media (min-width:560px){ .versus{ grid-template-columns:1fr 1fr; } }
+  .vcard{
+    border:1px solid var(--rule-strong);
+    border-radius:4px;
+    padding:16px;
+    background:var(--paper-raised);
+  }
+  .vcard.blocked{ border-color:var(--rust); }
+  .vcard.pass{ border-color:var(--verdant); }
+  .vcard .vlabel{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11px;
+    letter-spacing:0.04em;
+    font-weight:600;
+    margin-bottom:8px;
+  }
+  .vcard.blocked .vlabel{ color:var(--rust); }
+  .vcard.pass .vlabel{ color:var(--verdant); }
+  .vcard p{ font-size:14px; margin:0; }
+
+  /* ---------- Q&A ---------- */
+  .qa{ border-top:1px solid var(--rule); padding-block:16px; }
+  .qa:first-of-type{ border-top:none; }
+  .qa .q{
+    font-weight:700;
+    font-size:15px;
+    color:var(--ink);
+    margin-bottom:6px;
+  }
+  .qa .q::before{ content:"Q "; color:var(--brass); font-family:"IBM Plex Mono", monospace; font-weight:600;}
+  .qa .a{ font-size:14.5px; color:var(--ink-soft); line-height:1.6; margin:0; }
+
+  .callout{
+    background:var(--paper-raised);
+    border:1px solid var(--rule-strong);
+    border-radius:4px;
+    padding:16px 18px;
+    margin-block:16px;
+  }
+  .callout p{ margin:0; }
+  .callout .head{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11px;
+    letter-spacing:0.04em;
+    color:var(--brass-ink);
+    margin-bottom:6px;
+    font-weight:600;
+  }
+
+  footer{
+    padding-top:28px;
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11.5px;
+    color:var(--slate);
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:6px 16px;
+  }
+
+  @media (prefers-reduced-motion: no-preference){
+    .sheet{ animation:rise 0.5s ease-out; }
+    @keyframes rise{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:none;} }
+  }
+</style>
+
+<div class="sheet">
+
+  <div class="masthead">
+    <div class="kicker">
+      <span>FAILUREFOUNDRY — INTERNAL BRIEFING</span>
+      <span>TRACK: AI FOR FINANCE</span>
+    </div>
+    <h1 class="title">The FailureFoundry Playbook</h1>
+    <p class="subtitle">A working reference for the team: what's actually built, how to walk a judge through it, and the questions to have answers for before you're standing in front of one.</p>
+    <p class="thesis">PRISM finds and explains the failure. FailureFoundry turns that diagnosis into an executable behavioral contract that prevents recurrence.
+      <cite>— the one line every screen, PR, and demo beat has to earn</cite>
+    </p>
+  </div>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>The pitch, in one breath</h2></div>
+    <p class="lede">Every AI-reliability tool at this hackathon will show you a dashboard that <em>says</em> a model was unfair or unsafe. None of them will show you the model <strong>structurally unable to see the thing that made it unfair</strong> — and then prove, on the next run, that it still can't.</p>
+    <p>That's the gap FailureFoundry sits in. FairClaim (the insurance pipeline) is the demonstration environment, not the product. The product is the pipeline that runs underneath it: PRISM diagnoses a failure → FailureFoundry compiles that diagnosis into a versioned <strong>Behavior ABI</strong> → the ABI is enforced at runtime (proxy fields are actually stripped from the agent's context, not flagged after the fact) → the fix is hardened against harder variants → the original failure becomes a permanent regression test → a release gate blocks any future version that regresses.</p>
+    <p>The "crazy" part to lean on in the room: this isn't a claims app with a fairness checkbox. It's a <strong>compiler</strong>. The input is a diagnosed failure. The output is executable code that changes what an agent is structurally capable of doing.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>The five-minute demo, beat by beat</h2></div>
+    <p>This is the version to actually rehearse. It starts where a judge starts — the customer portal, not the engineering console — because "I filed a claim and the system checked itself" lands harder than opening on an admin dashboard.</p>
+
+    <div class="beat">
+      <div class="t">0:00</div>
+      <div><h4>File a real claim</h4><p>Open <code>/users</code>. Don't reach for a sample claim — upload an actual photo, pick a peril and damage severity, hit submit. This is a real multipart upload creating a real Policy + Claim + Document row, not a canned response.</p><span class="surface">POST /api/demo/claims/custom</span></div>
+    </div>
+    <div class="beat">
+      <div class="t">0:45</div>
+      <div><h4>Watch the decision resolve</h4><p>The result page reveals the causal chain (Intake → Adjudication → Explainability → Verification) as a timeline, then the decision and a plain-English "why" — no jargon, no internal IDs leaking into the copy.</p></div>
+    </div>
+    <div class="beat">
+      <div class="t">1:30</div>
+      <div><h4>Open the fairness certificate</h4><p>Tap the trust badge. This re-runs the same claim with the claimant's name, city, and narrative style swapped — nothing else — and shows whether the decision or payout moved. This is the counterfactual test from CLAUDE.md §13, run live, on this exact claim, in front of them.</p><span class="surface">POST /api/demo/fairness-groups/{id}/check</span></div>
+    </div>
+    <div class="beat">
+      <div class="t">2:15</div>
+      <div><h4>Toggle protection off</h4><p>Same claim, same facts, protection off. Payout diverges purely on the proxy variant. This is the "holy shit" moment — say the sentence from §30 out loud: <em>not</em> "the dashboard says ZIP affected the decision," but "ZIP is structurally unavailable to this agent once the ABI is enforced, and here it is available again with it off."</p></div>
+    </div>
+    <div class="beat">
+      <div class="t">3:00</div>
+      <div><h4>Jump to the engineering console</h4><p>Click "Verify this trace in the engineering console" on the receipt. It deep-links straight into Agent Runs, pre-filtered to this claim_id — the exact run rows, not a re-staged version of them.</p><span class="surface">?view=runs&claim_id=...</span></div>
+    </div>
+    <div class="beat">
+      <div class="t">3:45</div>
+      <div><h4>Show the failure → ABI → regression chain</h4><p>Failures page → the registered fairness failure → its Behavior ABI (prohibited: ZIP, name, narrative_style) → the regression test that now exists because of it, permanently, in the suite.</p></div>
+    </div>
+    <div class="beat">
+      <div class="t">4:20</div>
+      <div><h4>Land on the release gate</h4><p>PASS or BLOCKED, with the actual violated clause and the PRISM evidence backing it — not a green checkmark asserted for effect.</p></div>
+    </div>
+    <div class="beat">
+      <div class="t">4:50</div>
+      <div><h4>Close on the one-liner</h4><p>"PRISM found it. FailureFoundry made it impossible to happen the same way twice." Stop talking. Let the release gate screen sit there.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>The moment that actually sells it</h2></div>
+    <p>Judges have seen fairness dashboards. What they haven't seen as often is the same claim, same facts, two different runtime realities, side by side:</p>
+    <div class="versus">
+      <div class="vcard blocked">
+        <div class="vlabel">PROTECTION OFF — v1 CONTEXT</div>
+        <p>Adjudication's context object contains <code>claimant_name</code>, <code>zip</code>, <code>narrative_style</code>. Identical legitimate facts, payout diverges across the counterfactual pair.</p>
+      </div>
+      <div class="vcard pass">
+        <div class="vlabel">PROTECTION ON — ABI ENFORCED</div>
+        <p>Those keys are absent from the context object entirely before the agent ever reasons — not filtered from the output, removed from the input. Payout is identical across all four variants.</p>
+      </div>
+    </div>
+    <p style="margin-top:14px">If a judge asks "couldn't the model just learn to infer that from the writing style anyway" — that's a real, fair question. The honest answer: the ABI's invariant check doesn't just remove the field, it also asserts pairwise decision/payout consistency across the counterfactual group and fails the release gate on any disparity — so a model that re-derives the proxy some other way still gets caught downstream, at the regression stage, not just at the input-filtering stage.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>What's actually built — the insurance system</h2></div>
+    <p>Four agents, each with one job, none of them able to do another's job:</p>
+    <div class="ledger">
+      <div class="ledger-row">
+        <div class="ledger-key">Intake<span class="where">agents/intake.py</span></div>
+        <div class="ledger-val">Turns messy input (form fields, an uploaded photo, a description) into a structured claim: damage part, severity, estimated cost, evidence completeness. Never decides anything. On a freshly-submitted portal claim with no dataset ground truth, a dedicated <code>_run_intake_user_submitted</code> path avoids the visual-abstention logic built for the historical dataset — no photo escalates for evidence, a photo with complete evidence structures the claim.</div>
+      </div>
+      <div class="ledger-row">
+        <div class="ledger-key">Adjudication<span class="where">agents/adjudication.py</span></div>
+        <div class="ledger-val">The one agent that decides. Runs the deterministic oracle first — <code>policy inactive → DENY</code>, <code>peril excluded → DENY</code>, <code>evidence missing → ESCALATE</code>, else <code>payout = min(verified_damage − deductible, coverage_limit)</code> — then reasons within whatever factors the ABI currently permits into its context.</div>
+      </div>
+      <div class="ledger-row">
+        <div class="ledger-key">Explainability<span class="where">agents/explainability.py</span></div>
+        <div class="ledger-val">Writes the customer-facing "why," cites only evidence that exists on this claim, and is checked for unsupported claims before a customer ever sees it. Now also grounds against a real PRISM Knowledge Base (teammate's contribution) rather than free-associating.</div>
+      </div>
+      <div class="ledger-row">
+        <div class="ledger-key">Appeals<span class="where">agents/appeals.py</span></div>
+        <div class="ledger-val">Cannot overturn a decision without material new evidence — an appeal that just re-argues the same facts gets routed to escalation, not a silent reversal.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">05</span><h2>What's actually built — FailureFoundry core</h2></div>
+    <div class="ledger">
+      <div class="ledger-row"><div class="ledger-key">Scenario Engine</div><div class="ledger-val">Generates the counterfactual fairness pairs and workflow-bypass scenarios that everything downstream measures against.</div></div>
+      <div class="ledger-row"><div class="ledger-key">Failure Detection</div><div class="ledger-val">Runs matched claims through both agent versions and flags a failure when identical legitimate facts produce different decisions, payouts, or explanations.</div></div>
+      <div class="ledger-row"><div class="ledger-key">Behavior ABI Compiler</div><div class="ledger-val">Turns a diagnosed failure into a versioned, typed contract — permitted factors, prohibited factors, invariants, release constraints — that is validated on compile, not hand-written prose.</div></div>
+      <div class="ledger-row"><div class="ledger-key">Enforcement Layer</div><div class="ledger-val">The part that makes the ABI real: proxy fields are stripped from Adjudication's context object before it ever reasons. Verifiable by inspecting the context dict before and after — the fairness certificate feature is this check, run live, per claim.</div></div>
+      <div class="ledger-row"><div class="ledger-key">Hardening</div><div class="ledger-val">The fairness ladder — ZIP alone, then + name, then + narrative style, then + incomplete evidence — proves the fix generalizes past the one example that triggered it.</div></div>
+      <div class="ledger-row"><div class="ledger-key">Regression Engine</div><div class="ledger-val">Every discovered failure is persisted permanently. A fairness check that finds a disparity in the portal doesn't just show a badge — it calls <code>register_regression_test</code> for real, so it's in the suite from that moment on.</div></div>
+      <div class="ledger-row"><div class="ledger-key">Metrics Engine</div><div class="ledger-val">Task correctness, pairwise consistency, decision/payout disparity, workflow compliance, evidence completeness — computed from actual run rows, never hard-coded.</div></div>
+      <div class="ledger-row"><div class="ledger-key">Release Gate</div><div class="ledger-val">PASS only if critical ABI violations = 0, regressions pass, hardened scenarios pass, and required PRISM evidence was actually fetched. Otherwise BLOCKED, with the specific clause and evidence named.</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">06</span><h2>PRISM — what it does here, and what it doesn't</h2></div>
+    <p>FailureFoundry never re-implements evaluation or scoring — that line is deliberate, and worth stating plainly if asked. PRISM observes, evaluates, and diagnoses; FailureFoundry compiles, enforces, hardens, and gates. Integration runs on the real installed SDK (<code>prismtrace.PRISMtrace</code>, package <code>blockconvey-monitor</code>) against a live account, not a stub.</p>
+    <p>What's real right now: trace submission per run (<code>submit_to_prism</code>, opt-in so bulk/regression jobs don't burn quota), a fairness-check flow that submits real traced Adjudication calls, and — from a teammate's latest commit — the Release Gate now consumes an actual PRISM verdict, a live re-evaluation endpoint, and Explainability grounds against a real PRISM Knowledge Base instead of an ungrounded prompt.</p>
+    <div class="callout">
+      <div class="head">HONEST GAP — SAY THIS IF ASKED, DON'T HIDE IT</div>
+      <p>Some PRISM endpoints used here (like <code>/api/trajectories</code> listing) are empirically verified against the installed SDK rather than publicly documented. CLAUDE.md's own rule (§21/§31) is to build around what's verified and never fabricate what isn't — that's exactly what happened, and it's a better answer than pretending every corner of the integration is fully documented.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">07</span><h2>The customer portal — why it's not a toy form</h2></div>
+    <p>The credibility risk with any demo portal is "is this hardcoded." Three specific choices close that gap, and are worth naming to a judge unprompted rather than waiting to be asked:</p>
+    <h3>Real random sourcing</h3>
+    <p><code>GET /api/demo/claims/random</code> pulls from the full ~2,500-row dataset and reports the true total claim count, not the 8 curated samples shown by default — provably not a fixed demo set.</p>
+    <h3>Real free-form intake</h3>
+    <p>A judge can upload their own photo and fill in real vehicle/peril/damage details. <code>POST /api/demo/claims/custom</code> creates a genuine Policy + Claim + Document, and the oracle math runs on their numbers, not a lookup table.</p>
+    <h3>Receipts that point at their own proof</h3>
+    <p>Every result carries a receipt — run count, agent version, a PRISM-submitted checkmark when true — with a deep link straight into the engineering console's Agent Runs page, pre-filtered to that exact claim. The claim someone just made a decision on and the trace rows backing it are the same rows, one click apart.</p>
+    <h3>The fairness certificate and "what would change this"</h3>
+    <p>Added this session, deliberately scoped to two things and nothing from the larger draft proposal (no Google auth, no email, no second admin surface — evaluated and cut as scope that doesn't earn its complexity for a hackathon judge): a per-claim counterfactual re-run against real proxy variants, and — for anything escalated or denied — a specific, honest sentence about what would change the outcome (a photo, a renewed policy, missing evidence), sourced from the same oracle logic that made the decision, not a canned FAQ.</p>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">08</span><h2>Anticipated questions</h2></div>
+    <div class="qa">
+      <p class="q">Isn't this just a fairness linter with extra steps?</p>
+      <p class="a">A linter tells you a rule was violated. This changes what the agent can see before it reasons, proves that change with a before/after context inspection, and then holds that fix in place with a regression suite that runs against every future version. The output is enforcement code, not a warning.</p>
+    </div>
+    <div class="qa">
+      <p class="q">Could this generalize past insurance claims?</p>
+      <p class="a">That's the actual design constraint, not an afterthought — FairClaim's agents never import from FailureFoundry's <code>abi/</code> or <code>enforcement/</code> modules; everything crosses through a trace/scenario layer. Swap the agents, keep the compiler.</p>
+    </div>
+    <div class="qa">
+      <p class="q">What's simulated versus real, if I dig in?</p>
+      <p class="a">The claims environment is synthetic by design (no real claimant data, per CLAUDE.md §7) and the oracle is a deterministic rule, not an LLM. Everything downstream of a claim entering the system — agent execution, traces, failure detection, ABI compilation, enforcement, metrics, regression, the release gate, and PRISM evidence — runs for real against a live account and a real SQLite system of record.</p>
+    </div>
+    <div class="qa">
+      <p class="q">What would you build next with more time?</p>
+      <p class="a">Neo4j as the causal-lineage projection layer is scoped but on standby in this environment; wiring it in would make the failure→ABI→mutation dependency tree queryable as a graph instead of joined tables. Multi-hop version comparison across more than two agent versions is the other natural next step.</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>FailureFoundry / FairClaim — internal reference, not for external distribution</span>
+    <span class="mono">rev 2026-09-15</span>
+  </footer>
+
+</div>
