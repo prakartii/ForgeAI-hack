@@ -237,6 +237,76 @@ def _humanize_explanation(decision: str, reason: str, adjudication: Dict[str, An
     return f"We've escalated this claim for a closer look because {why}."
 
 
+# Alternate synthetic values used only to re-run Adjudication in-memory for
+# the fairness certificate -- never persisted, never shown to the
+# claimant. If protected=True has already stripped these fields from the
+# Adjudication context, swapping them here provably can't move the
+# decision (the ABI's own guarantee); if protected=False, it can, and the
+# certificate says so honestly rather than hiding it.
+_ALT_PROXY_VALUES = {
+    "claimant_name_synthetic": "Priya Nair",
+    "city": "Bengaluru",
+    "narrative_style": "FORMAL",
+}
+
+
+def _run_fairness_certificate(
+    claim: ClaimModel,
+    policy: PolicyModel,
+    prohibited_fields: Optional[list],
+    original_decision: str,
+    original_payout: float,
+) -> Dict[str, Any]:
+    """
+    Re-runs Adjudication with one proxy attribute swapped at a time, held
+    against the same legitimate facts, and compares the outcome to what
+    the claimant actually got -- the counterfactual check CLAUDE.md §13
+    runs for the engineering demo, surfaced per-claim instead of only in
+    the standalone Fairness Check page. Returns tests_run=0 (no
+    certificate) for claims with no proxy data to test, e.g. a
+    user-submitted claim that never collected a name/city.
+    """
+    checks = []
+    original_proxy_variants = claim.proxy_variants
+    for attribute, alt_value in _ALT_PROXY_VALUES.items():
+        current_value = original_proxy_variants.get(attribute)
+        if not current_value or current_value == alt_value:
+            continue
+        claim.proxy_variants = {**original_proxy_variants, attribute: alt_value}
+        try:
+            result = run_adjudication(claim, policy, prohibited_fields=prohibited_fields)
+        finally:
+            claim.proxy_variants = original_proxy_variants  # never persisted either way
+        checks.append({
+            "attribute": attribute,
+            "decision_changed": result["decision"] != original_decision,
+            "payout_changed": abs(result["payout"] - original_payout) > 1,
+        })
+
+    passed = sum(1 for c in checks if not c["decision_changed"] and not c["payout_changed"])
+    return {
+        "tests_run": len(checks),
+        "tests_passed": passed,
+        "disparity_found": len(checks) > 0 and passed < len(checks),
+    }
+
+
+_WHAT_WOULD_CHANGE = {
+    "POLICY_INACTIVE": "Renewing your policy so it's active on the incident date would let this be approved.",
+    "PERIL_EXCLUDED": "Adding this type of incident to your covered perils would let this be approved.",
+    "EVIDENCE_MISSING": "Providing the required evidence (like a clear damage photo) would let us finish reviewing this.",
+    "REQUEST_IMAGE_OR_ESCALATE": "Uploading a photo of the damage would let us finish reviewing this.",
+    "REQUEST_MISSING_EVIDENCE_OR_ESCALATE": "Providing the remaining required evidence would let us finish reviewing this.",
+}
+
+
+def _what_would_change(decision: str, reason: str) -> Optional[str]:
+    """Plain-language, drawn only from the permitted-attribute reason code -- never a prohibited attribute."""
+    if decision == "APPROVE":
+        return None
+    return _WHAT_WOULD_CHANGE.get(reason)
+
+
 @router.get("/claim-options", response_model=Dict[str, Any])
 def get_claim_form_options() -> Dict[str, Any]:
     """Real, dataset-derived vocab for the new-claim form's dropdowns."""
@@ -409,6 +479,21 @@ def submit_claim(
         )
 
     adjudication = result["adjudication"]
+
+    # The certificate re-runs run_adjudication directly with one proxy
+    # field swapped -- only a meaningful comparison when the real
+    # decision came from that same function. When Intake couldn't
+    # structure the claim (unresolved evidence, wrong image, etc.),
+    # orchestrator overrides straight to ESCALATE without ever calling
+    # run_adjudication, so there's no fairness question to test here.
+    intake_structured_claim = result["intake"]["action"] in ("STRUCTURE_CLAIM", "STRUCTURE_CLAIM_FROM_DOCUMENTS")
+    if intake_structured_claim:
+        fairness_certificate = _run_fairness_certificate(
+            claim, policy, prohibited_fields, adjudication["decision"], adjudication["payout"]
+        )
+    else:
+        fairness_certificate = {"tests_run": 0, "tests_passed": 0, "disparity_found": False}
+
     return {
         "claim_id": claim_id,
         "protected": protected,
@@ -418,6 +503,8 @@ def submit_claim(
         "payout_inr": adjudication["payout"],
         "explanation": explanation,
         "explanation_verified": result.get("workflow_state").explanation_verified if result.get("workflow_state") else False,
+        "fairness_certificate": fairness_certificate,
+        "what_would_change": _what_would_change(adjudication["decision"], adjudication["reason"]),
         "receipt": {
             "runs": [
                 {"run_id": r.run_id, "agent_name": r.agent_name, "prism_session_id": r.prism_session_id}

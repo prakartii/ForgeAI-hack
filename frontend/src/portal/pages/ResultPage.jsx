@@ -51,10 +51,38 @@ export function ResultPage({ result, onRestart, onOpenFairnessCheck }) {
                 )}
               </div>
 
+              {result.fairness_certificate?.tests_run > 0 && (
+                <button
+                  onClick={onOpenFairnessCheck}
+                  className={`w-full text-left rounded-2xl p-3.5 flex items-center gap-3 transition-colors ${
+                    result.fairness_certificate.disparity_found
+                      ? 'bg-pcoral-50 hover:bg-pcoral-100'
+                      : 'bg-pteal-50 hover:bg-pteal-100'
+                  }`}
+                >
+                  <span className="text-xl">{result.fairness_certificate.disparity_found ? '⚠' : '🛡️'}</span>
+                  <div>
+                    <p className={`text-[13px] font-semibold ${result.fairness_certificate.disparity_found ? 'text-pcoral-700' : 'text-pteal-700'}`}>
+                      {result.fairness_certificate.disparity_found
+                        ? `Disparity found in ${result.fairness_certificate.tests_run - result.fairness_certificate.tests_passed} of ${result.fairness_certificate.tests_run} fairness tests`
+                        : `Checked against ${result.fairness_certificate.tests_run} fairness tests — no disparity found`}
+                    </p>
+                    <p className="text-[11px] text-pinkfaint mt-0.5">Re-tested with your name, city, and writing style changed. Tap to see the details.</p>
+                  </div>
+                </button>
+              )}
+
               {result.explanation && (
                 <div className="rounded-2xl border border-pline p-4">
                   <p className="text-[11px] font-semibold text-pinkfaint uppercase tracking-wide mb-1.5">Why</p>
                   <p className="text-[14px] leading-relaxed">{result.explanation}</p>
+                </div>
+              )}
+
+              {result.what_would_change && (
+                <div className="rounded-2xl border border-pline p-4">
+                  <p className="text-[11px] font-semibold text-pinkfaint uppercase tracking-wide mb-1.5">What would change this</p>
+                  <p className="text-[14px] leading-relaxed">{result.what_would_change}</p>
                 </div>
               )}
             </>

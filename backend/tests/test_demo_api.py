@@ -86,6 +86,73 @@ def test_submit_claim_unprotected_vs_protected(client):
     assert "APPROVE" not in protected["explanation"]  # plain English, not the raw enum value
 
 
+def test_fairness_certificate_finds_no_disparity_when_protected(client):
+    client.post("/api/scenarios/load")
+    groups = client.get("/api/demo/fairness-groups").json()
+    variants = client.get(f"/api/demo/fairness-groups/{groups[0]['group_id']}/variants").json()
+    claim_id = variants[0]["claim_id"]
+
+    protected = client.post(f"/api/demo/submit?claim_id={claim_id}&protected=true").json()
+    cert = protected["fairness_certificate"]
+    assert cert["tests_run"] > 0  # this claim has real proxy data to test
+    assert cert["tests_passed"] == cert["tests_run"]
+    assert cert["disparity_found"] is False
+
+
+def test_fairness_certificate_is_absent_for_claims_with_no_proxy_data(client):
+    response = client.post(
+        "/api/demo/claims/custom",
+        data={
+            "vehicle_make": "Tata", "vehicle_model": "Punch", "peril": "COLLISION",
+            "damage_part": "BUMPER", "damage_severity": "MEDIUM",
+            "description": "x", "repair_estimate_inr": "5000", "policy_tier": "standard",
+        },
+    )
+    claim_id = response.json()["claim_id"]
+    result = client.post(f"/api/demo/submit?claim_id={claim_id}&protected=true").json()
+    assert result["fairness_certificate"]["tests_run"] == 0
+    assert result["fairness_certificate"]["disparity_found"] is False
+
+
+def test_what_would_change_is_none_when_approved_and_set_when_escalated(client):
+    client.post("/api/scenarios/load")
+    groups = client.get("/api/demo/fairness-groups").json()
+    variants = client.get(f"/api/demo/fairness-groups/{groups[0]['group_id']}/variants").json()
+    approved = client.post(f"/api/demo/submit?claim_id={variants[0]['claim_id']}&protected=true").json()
+    assert approved["decision"] == "APPROVE"
+    assert approved["what_would_change"] is None
+
+    escalated = client.post(
+        "/api/demo/claims/custom",
+        data={
+            "vehicle_make": "Tata", "vehicle_model": "Punch", "peril": "COLLISION",
+            "damage_part": "BUMPER", "damage_severity": "MEDIUM",
+            "description": "x", "repair_estimate_inr": "5000", "policy_tier": "standard",
+        },
+    ).json()
+    result = client.post(f"/api/demo/submit?claim_id={escalated['claim_id']}&protected=true").json()
+    assert result["decision"] == "ESCALATE"
+    assert result["what_would_change"] is not None
+    assert "photo" in result["what_would_change"].lower()
+
+
+def test_fairness_certificate_is_skipped_when_intake_could_not_structure_the_claim(client):
+    """
+    A claim Intake escalates (unresolved visual evidence, missing image,
+    etc.) never reaches run_adjudication for a real decision -- the
+    certificate must not compare that escalation against a hypothetical
+    run_adjudication call, which would report a meaningless "disparity"
+    between two different code paths rather than a real fairness issue.
+    """
+    client.post("/api/scenarios/load")
+    # IMG_0001 is the dataset's fixed ambiguous-visual-evidence scenario
+    # (CLAUDE.md sec13's abstention example) -- Intake always escalates it.
+    unresolved = client.post("/api/demo/submit?claim_id=IMG_0001&protected=true").json()
+    assert unresolved["decision"] == "ESCALATE"
+    assert unresolved["fairness_certificate"]["tests_run"] == 0
+    assert unresolved["fairness_certificate"]["disparity_found"] is False
+
+
 def test_submit_unknown_claim_returns_404(client):
     response = client.post("/api/demo/submit?claim_id=NOT_A_REAL_CLAIM")
     assert response.status_code == 404
