@@ -10,7 +10,7 @@ const TYPE_TONE = {
   DECISION_CORRECTNESS: 'slate',
 };
 
-export function FailuresPage() {
+export function FailuresPage({ initialFailureId }) {
   const [failures, setFailures] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -31,7 +31,11 @@ export function FailuresPage() {
       setFailures(failuresData);
       setPrismStatus(prismData);
       setError(null);
-      setSelected((prev) => (prev ? failuresData.find((f) => f.failure_id === prev.failure_id) || prev : prev));
+      setSelected((prev) => {
+        if (prev) return failuresData.find((f) => f.failure_id === prev.failure_id) || prev;
+        if (initialFailureId) return failuresData.find((f) => f.failure_id === initialFailureId) || null;
+        return prev;
+      });
     } catch (err) {
       setError(err.message);
     } finally {

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { PlayCircle, Clock, Zap } from 'lucide-react';
+import { PlayCircle, Clock, Zap, X } from 'lucide-react';
 import { executeClaimAndReport, fetchRuns } from '../services/api';
 import { ActionButton, Badge, Card, EmptyState, ErrorNote } from '../components/ui';
 
@@ -10,20 +10,21 @@ const STATUS_TONE = {
   pending: 'slate',
 };
 
-export function AgentRunsPage() {
+export function AgentRunsPage({ initialClaimId }) {
   const [runs, setRuns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [claimId, setClaimId] = useState('IMG_0002');
+  const [claimId, setClaimId] = useState(initialClaimId || 'IMG_0002');
+  const [filterClaimId, setFilterClaimId] = useState(initialClaimId || '');
   const [agentVersion, setAgentVersion] = useState('v1');
   const [enforced, setEnforced] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [lastResult, setLastResult] = useState(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (claimFilter) => {
     setLoading(true);
     try {
-      setRuns(await fetchRuns());
+      setRuns(await fetchRuns(claimFilter ? { claim_id: claimFilter } : {}));
       setError(null);
     } catch (err) {
       setError(err.message);
@@ -32,7 +33,7 @@ export function AgentRunsPage() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(filterClaimId); }, [load, filterClaimId]);
 
   const handleExecute = async () => {
     setExecuting(true);
@@ -40,7 +41,7 @@ export function AgentRunsPage() {
       const result = await executeClaimAndReport({ claim_id: claimId, agent_version: agentVersion, enforced });
       setLastResult(result);
       setError(null);
-      await load();
+      await load(filterClaimId);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -109,7 +110,22 @@ export function AgentRunsPage() {
         )}
       </Card>
 
-      <Card title="Recent runs" icon={Clock} noPadding>
+      <Card
+        title="Recent runs"
+        icon={Clock}
+        tag={filterClaimId ? `filtered: ${filterClaimId}` : undefined}
+        noPadding
+      >
+        {filterClaimId && (
+          <div className="px-5 pt-4 -mb-2">
+            <button
+              onClick={() => setFilterClaimId('')}
+              className="inline-flex items-center gap-1 text-[12px] text-ledger-700 hover:text-ledger-700/70"
+            >
+              <X className="w-3 h-3" /> Clear filter
+            </button>
+          </div>
+        )}
         {loading ? (
           <p className="text-[13px] text-ink-faint p-5">Loading…</p>
         ) : runs.length === 0 ? (
@@ -127,7 +143,8 @@ export function AgentRunsPage() {
                   <th className="py-2 pr-4 font-normal">Version</th>
                   <th className="py-2 pr-4 font-normal">Status</th>
                   <th className="py-2 pr-4 font-normal">Scenario</th>
-                  <th className="py-2 pr-5 font-normal">ABI version</th>
+                  <th className="py-2 pr-4 font-normal">ABI version</th>
+                  <th className="py-2 pr-5 font-normal">PRISM session</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -138,7 +155,8 @@ export function AgentRunsPage() {
                     <td className="py-2 pr-4 font-mono">{run.agent_version}</td>
                     <td className="py-2 pr-4"><Badge tone={STATUS_TONE[run.status] || 'slate'}>{run.status}</Badge></td>
                     <td className="py-2 pr-4 font-mono text-ink-faint">{run.scenario_id || '—'}</td>
-                    <td className="py-2 pr-5 font-mono text-ink-faint">{run.abi_version || '—'}</td>
+                    <td className="py-2 pr-4 font-mono text-ink-faint">{run.abi_version || '—'}</td>
+                    <td className="py-2 pr-5 font-mono text-ink-faint">{run.prism_session_id || '—'}</td>
                   </tr>
                 ))}
               </tbody>

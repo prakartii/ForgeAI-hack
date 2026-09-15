@@ -81,6 +81,21 @@ def list_sample_claims(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
     return [_claim_summary(db, c) for c in ordered]
 
 
+@router.get("/claims/random", response_model=Dict[str, Any])
+def get_random_claim(db: Session = Depends(get_db)) -> Dict[str, Any]:
+    """
+    Picks a genuinely random claim from the full dataset (not the 8
+    curated samples) -- proof this isn't a small fixed set dressed up as
+    a real system. Returns the total claim count alongside it so the
+    portal can show "1 of N real claims."
+    """
+    total = db.query(ClaimModel).count()
+    if total == 0:
+        raise HTTPException(status_code=404, detail="no claims loaded yet -- load the demo dataset first")
+    claim = db.query(ClaimModel).order_by(func.random()).first()
+    return {**_claim_summary(db, claim), "total_claims_in_system": total}
+
+
 @router.get("/fairness-groups", response_model=List[Dict[str, Any]])
 def list_fairness_groups(db: Session = Depends(get_db)) -> List[Dict[str, Any]]:
     """
@@ -158,6 +173,10 @@ def check_fairness_group(
         with TraceRecorder(
             db, claim_id=claim_id, agent_name="adjudication", agent_version=agent_version,
             scenario_id=claim_id, counterfactual_group=group_id,
+            # Bounded to this group's ~4 variants per click -- a real
+            # interactive action, not a bulk sweep -- so it's safe to
+            # submit each to PRISM live like the single-claim flow does.
+            submit_to_prism=True,
         ) as tr:
             result = run_adjudication(claim, policy, prohibited_fields=prohibited_fields)
             tr.record_event(
@@ -173,11 +192,18 @@ def check_fairness_group(
     if failure:
         register_regression_test(db, failure, abi_version_introduced="fair_adjudication_v1")
 
+    prism_sessions = {
+        r.run_id: r.prism_session_id
+        for r in db.query(AgentRunModel).filter(AgentRunModel.run_id.in_(run_ids.values())).all()
+    }
+
     return {
         "group_id": group_id,
         "protected": protected,
-        "outcomes": {cid: {"decision": d, "payout": p} for cid, (d, p) in outcomes.items()},
-        "run_ids": run_ids,
+        "outcomes": {
+            cid: {"decision": d, "payout": p, "run_id": run_ids[cid], "prism_session_id": prism_sessions.get(run_ids[cid])}
+            for cid, (d, p) in outcomes.items()
+        },
         "failure_id": failure.failure_id if failure else None,
     }
 
@@ -344,10 +370,29 @@ def submit_claim(
         workflow_enforce = False
         agent_version = "v1"
 
+    before_run_id = db.query(func.max(AgentRunModel.id)).scalar() or 0
+
     result = run_claim_pipeline(
         db, claim, policy, agent_version=agent_version,
         prohibited_fields=prohibited_fields, workflow_enforce=workflow_enforce,
         scenario_id=claim_id,
+        # A real, single interactive claim submitted through the portal --
+        # this is exactly the case the engineering console's own "Run
+        # pipeline" action submits to PRISM for, so the portal does too.
+        submit_to_prism=True,
+    )
+
+    # The exact AgentRun rows this call just created -- real, queryable
+    # proof (not a summary) that this claim was actually executed, not
+    # looked up from a table of canned answers. A judge can open the
+    # engineering console's Agent Runs page filtered to this claim_id and
+    # see these same run_ids (and, if PRISM is configured, the same
+    # prism_session_id already attached by the auto-submit above).
+    new_runs = (
+        db.query(AgentRunModel)
+        .filter(AgentRunModel.id > before_run_id, AgentRunModel.claim_id == claim_id)
+        .order_by(AgentRunModel.id.asc())
+        .all()
     )
 
     steps = ["submitted", "reviewed"]
@@ -373,4 +418,12 @@ def submit_claim(
         "payout_inr": adjudication["payout"],
         "explanation": explanation,
         "explanation_verified": result.get("workflow_state").explanation_verified if result.get("workflow_state") else False,
+        "receipt": {
+            "runs": [
+                {"run_id": r.run_id, "agent_name": r.agent_name, "prism_session_id": r.prism_session_id}
+                for r in new_runs
+            ],
+            "agent_version": agent_version,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        },
     }

@@ -12,8 +12,14 @@ import { RegressionPage } from './pages/RegressionPage';
 import { ComparisonPage } from './pages/ComparisonPage';
 import { ReleaseGatePage } from './pages/ReleaseGatePage';
 
+// A portal action (e.g. filing a claim, running the fairness check) can
+// link straight into this console pre-filtered to what it just did --
+// e.g. /?view=runs&claim_id=USER_abc123 -- so a viewer can verify the
+// portal's result against the real trace, not just trust it.
+const initialParams = new URLSearchParams(window.location.search);
+
 export default function App() {
-  const [currentTab, setCurrentTab] = useState('overview');
+  const [currentTab, setCurrentTab] = useState(initialParams.get('view') || 'overview');
   const { health, loading, error, refresh } = useHealth(10000);
 
   const renderPage = () => {
@@ -21,11 +27,11 @@ export default function App() {
       case 'overview':
         return <OverviewPage health={health} />;
       case 'runs':
-        return <AgentRunsPage />;
+        return <AgentRunsPage initialClaimId={initialParams.get('claim_id') || undefined} />;
       case 'graph':
         return <GraphPage />;
       case 'failures':
-        return <FailuresPage />;
+        return <FailuresPage initialFailureId={initialParams.get('failure_id') || undefined} />;
       case 'prism':
         return <PrismEvidencePage />;
       case 'abi':

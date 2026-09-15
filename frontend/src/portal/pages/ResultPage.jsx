@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { consoleUrl } from '../../services/api';
 import { DecisionBadge, PortalButton, PortalHeader, StatusTimeline } from '../ui';
 
 export function ResultPage({ result, onRestart, onOpenFairnessCheck }) {
@@ -67,6 +68,22 @@ export function ResultPage({ result, onRestart, onOpenFairnessCheck }) {
               See how this could go differently →
             </PortalButton>
           </div>
+
+          {result.receipt && (
+            <div className="rounded-xl bg-pcream p-3.5 text-[11px] font-mono text-pinkfaint leading-relaxed">
+              <p>claim {result.claim_id}</p>
+              <p>{result.receipt.runs.length} agent run(s) · {result.receipt.agent_version} · {new Date(result.receipt.timestamp).toLocaleTimeString()}</p>
+              {result.receipt.runs.some((r) => r.prism_session_id) && <p>PRISM: submitted ✓</p>}
+              <a
+                href={consoleUrl({ view: 'runs', claim_id: result.claim_id })}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-block mt-1.5 text-pteal-700 font-semibold not-italic"
+              >
+                Verify this trace in the engineering console →
+              </a>
+            </div>
+          )}
         </div>
       )}
     </div>

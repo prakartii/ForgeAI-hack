@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { fetchSampleClaims, resolveImageUrl } from '../../services/api';
+import { fetchRandomClaim, fetchSampleClaims, resolveImageUrl } from '../../services/api';
 import { ClaimCard, PortalButton } from '../ui';
 
 export function HomePage({ onPickClaim, onStartNewClaim, onOpenFairnessCheck }) {
   const [claims, setClaims] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [totalClaims, setTotalClaims] = useState(null);
+  const [drawingRandom, setDrawingRandom] = useState(false);
 
   useEffect(() => {
     fetchSampleClaims()
@@ -13,6 +15,19 @@ export function HomePage({ onPickClaim, onStartNewClaim, onOpenFairnessCheck }) 
       .catch(() => setClaims([]))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleRandom = async () => {
+    setDrawingRandom(true);
+    try {
+      const claim = await fetchRandomClaim();
+      setTotalClaims(claim.total_claims_in_system);
+      onPickClaim({ ...claim, image_url: resolveImageUrl(claim.image_url) });
+    } catch (err) {
+      // stay on this page; the sample list below still works
+    } finally {
+      setDrawingRandom(false);
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col px-5 pb-6">
@@ -24,13 +39,16 @@ export function HomePage({ onPickClaim, onStartNewClaim, onOpenFairnessCheck }) 
         </p>
       </div>
 
-      <PortalButton onClick={onStartNewClaim} className="mb-6">
+      <PortalButton onClick={onStartNewClaim} className="mb-3">
         📷 File a new claim
+      </PortalButton>
+      <PortalButton variant="secondary" onClick={handleRandom} loading={drawingRandom} className="mb-6">
+        🎲 Try a random real claim{totalClaims ? ` (1 of ${totalClaims.toLocaleString('en-IN')})` : ''}
       </PortalButton>
 
       <div className="flex items-center gap-3 mb-4">
         <div className="h-px bg-pline flex-1" />
-        <p className="text-[11px] text-pinkfaint">or try a sample accident</p>
+        <p className="text-[11px] text-pinkfaint">or pick a sample accident</p>
         <div className="h-px bg-pline flex-1" />
       </div>
 

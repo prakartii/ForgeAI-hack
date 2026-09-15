@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { fetchFairnessGroupVariants, fetchFairnessGroups, resolveImageUrl, submitClaim } from '../../services/api';
+import { checkFairnessGroup, consoleUrl, fetchFairnessGroupVariants, fetchFairnessGroups, resolveImageUrl } from '../../services/api';
 import { DecisionBadge, PortalButton, PortalHeader } from '../ui';
 
 export function FairnessCheckPage({ onBack }) {
@@ -8,7 +8,7 @@ export function FairnessCheckPage({ onBack }) {
   const [variants, setVariants] = useState([]);
   const [protectedMode, setProtectedMode] = useState(false);
   const [running, setRunning] = useState(false);
-  const [results, setResults] = useState(null);
+  const [checkResult, setCheckResult] = useState(null);
 
   useEffect(() => {
     fetchFairnessGroups()
@@ -18,7 +18,7 @@ export function FairnessCheckPage({ onBack }) {
 
   const pickGroup = async (group) => {
     setSelectedGroup(group);
-    setResults(null);
+    setCheckResult(null);
     const data = await fetchFairnessGroupVariants(group.group_id);
     setVariants(data);
   };
@@ -26,17 +26,15 @@ export function FairnessCheckPage({ onBack }) {
   const runComparison = async () => {
     setRunning(true);
     try {
-      const outcomes = await Promise.all(
-        variants.map((v) => submitClaim({ claimId: v.claim_id, protected: protectedMode }))
-      );
-      setResults(outcomes);
+      const result = await checkFairnessGroup(selectedGroup.group_id, protectedMode);
+      setCheckResult(result);
     } finally {
       setRunning(false);
     }
   };
 
-  const distinctOutcomes = results
-    ? new Set(results.map((r) => `${r.decision}:${r.payout_inr}`)).size
+  const distinctOutcomes = checkResult
+    ? new Set(Object.values(checkResult.outcomes).map((o) => `${o.decision}:${o.payout}`)).size
     : null;
 
   if (!selectedGroup) {
@@ -92,31 +90,49 @@ export function FairnessCheckPage({ onBack }) {
       </div>
 
       <div className="space-y-2 mb-4">
-        {variants.map((v, i) => (
-          <div key={v.claim_id} className="flex items-center justify-between rounded-xl border border-pline px-3.5 py-2.5">
-            <div>
-              <p className="text-[13px] font-medium">{v.claimant_name}</p>
-              <p className="text-[11px] text-pinkfaint">{v.city}, {v.state}</p>
-            </div>
-            {results && (
-              <div className="text-right">
-                <DecisionBadge decision={results[i].decision} size="sm" />
-                {results[i].decision === 'APPROVE' && (
-                  <p className="text-[13px] font-bold mt-1">₹{results[i].payout_inr?.toLocaleString('en-IN')}</p>
-                )}
+        {variants.map((v) => {
+          const outcome = checkResult?.outcomes?.[v.claim_id];
+          return (
+            <div key={v.claim_id} className="flex items-center justify-between rounded-xl border border-pline px-3.5 py-2.5">
+              <div>
+                <p className="text-[13px] font-medium">{v.claimant_name}</p>
+                <p className="text-[11px] text-pinkfaint">{v.city}, {v.state}</p>
               </div>
-            )}
-          </div>
-        ))}
+              {outcome && (
+                <div className="text-right">
+                  <DecisionBadge decision={outcome.decision} size="sm" />
+                  {outcome.decision === 'APPROVE' && (
+                    <p className="text-[13px] font-bold mt-1">₹{outcome.payout?.toLocaleString('en-IN')}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {results && (
+      {checkResult && (
         <div className={`rounded-2xl p-4 mb-4 text-[13px] font-medium ${
           distinctOutcomes === 1 ? 'bg-pteal-50 text-pteal-700' : 'bg-pcoral-50 text-pcoral-700'
         }`}>
           {distinctOutcomes === 1
-            ? `All ${results.length} customers got the identical decision and payout.`
+            ? `All ${variants.length} customers got the identical decision and payout.`
             : `${distinctOutcomes} different payout amounts for the exact same accident — only the name and city changed.`}
+        </div>
+      )}
+
+      {checkResult?.failure_id && (
+        <div className="rounded-xl bg-pcream p-3.5 text-[11px] font-mono text-pinkfaint leading-relaxed mb-4">
+          <p>failure {checkResult.failure_id} registered</p>
+          <p>a regression test now guards this exact accident going forward</p>
+          <a
+            href={consoleUrl({ view: 'failures', failure_id: checkResult.failure_id })}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block mt-1.5 text-pteal-700 font-semibold not-italic"
+          >
+            View this failure in the engineering console →
+          </a>
         </div>
       )}
 

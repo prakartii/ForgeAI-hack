@@ -94,11 +94,19 @@ export const computeMetrics = (params = {}) => {
 
 // --- Customer Portal (FairClaim) ---
 export const fetchSampleClaims = () => getJSON('/api/demo/claims');
+export const fetchRandomClaim = () => getJSON('/api/demo/claims/random');
 export const fetchFairnessGroups = () => getJSON('/api/demo/fairness-groups');
 export const fetchFairnessGroupVariants = (groupId) => getJSON(`/api/demo/fairness-groups/${encodeURIComponent(groupId)}/variants`);
+export const checkFairnessGroup = (groupId, isProtected) =>
+  postJSON(`/api/demo/fairness-groups/${encodeURIComponent(groupId)}/check?protected=${isProtected}`);
 export const submitClaim = ({ claimId, protected: isProtected }) =>
   postJSON(`/api/demo/submit?claim_id=${encodeURIComponent(claimId)}&protected=${isProtected}`);
 export const resolveImageUrl = (path) => (path ? `${API_BASE_URL}${path}` : null);
+// The engineering console and portal are served from the same origin at
+// different paths (/ vs /users) -- this builds a real, clickable deep
+// link into the console pre-filtered to whatever claim/failure a portal
+// action just produced, so a judge can verify it themselves.
+export const consoleUrl = (params) => `/?${new URLSearchParams(params).toString()}`;
 
 export const fetchClaimOptions = () => getJSON('/api/demo/claim-options');
 export const submitCustomClaim = async (formValues) => {

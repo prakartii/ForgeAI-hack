@@ -8,6 +8,20 @@ def test_list_sample_claims(client):
     assert "description" in claims[0]
 
 
+def test_random_claim_is_not_limited_to_the_curated_list(client):
+    client.post("/api/scenarios/load")
+    curated = {c["claim_id"] for c in client.get("/api/demo/claims").json()}
+    seen = set()
+    for _ in range(15):
+        claim = client.get("/api/demo/claims/random").json()
+        # The shared test database may already hold extra user-submitted
+        # claims from other tests/manual runs -- just confirm the real
+        # dataset's 2,500 rows are present, not a suspiciously small number.
+        assert claim["total_claims_in_system"] >= 2500
+        seen.add(claim["claim_id"])
+    assert seen - curated  # at least one random pick fell outside the curated 8
+
+
 def test_list_fairness_groups(client):
     client.post("/api/scenarios/load")
     response = client.get("/api/demo/fairness-groups")
@@ -27,6 +41,32 @@ def test_get_fairness_group_variants(client):
     assert len(variants) == 4
     names = {v["claimant_name"] for v in variants}
     assert len(names) == 4  # each variant has a distinct claimant name
+
+
+def test_fairness_check_registers_a_real_failure_when_unprotected(client):
+    client.post("/api/scenarios/load")
+    groups = client.get("/api/demo/fairness-groups").json()
+    group_id = groups[0]["group_id"]
+
+    unprotected = client.post(f"/api/demo/fairness-groups/{group_id}/check?protected=false").json()
+    payouts = {v["payout"] for v in unprotected["outcomes"].values()}
+    if len(payouts) > 1:
+        assert unprotected["failure_id"] is not None
+        failures = client.get("/api/failures").json()
+        assert any(f["failure_id"] == unprotected["failure_id"] for f in failures)
+        regressions = client.get("/api/regressions").json()
+        assert any(r["input_data"].get("scenario_id") == group_id for r in regressions)
+
+
+def test_fairness_check_finds_no_failure_when_protected(client):
+    client.post("/api/scenarios/load")
+    groups = client.get("/api/demo/fairness-groups").json()
+    group_id = groups[0]["group_id"]
+
+    protected = client.post(f"/api/demo/fairness-groups/{group_id}/check?protected=true").json()
+    assert protected["failure_id"] is None
+    payouts = {v["payout"] for v in protected["outcomes"].values()}
+    assert len(payouts) == 1
 
 
 def test_submit_claim_unprotected_vs_protected(client):
