@@ -127,6 +127,79 @@ def test_release_gate_prism_clause_passes_when_credentials_are_real(loaded_db):
     assert "prism_evidence" not in result.violated_clauses
 
 
+def test_evidence_completeness_counts_a_blocked_bad_citation_as_complete(loaded_db):
+    """
+    ~50 claims in the demo dataset seed a deliberately invalid citation
+    (NONEXISTENT_CITATION / UNSUPPORTED_POLICY_CLAUSE /
+    RATIONALE_DECISION_CONTRADICTION) specifically so the explanation-
+    verification checkpoint has something real to catch. Under v2 those
+    are correctly BLOCKED_CUSTOMER_COMMUNICATION -- evidence_completeness
+    must count that as the requirement being met (no bad explanation
+    reached a customer), not as a violation, otherwise a full-dataset
+    release-gate run can never reach 1.0 no matter how well v2 enforces
+    the checkpoint (regression guard for a real bug hit live).
+    """
+    import json
+
+    seeded_ids = [
+        row[0]
+        for row in loaded_db.query(ClaimModel.claim_id, ClaimModel.details).all()
+        if row[1].get("failure_injected")
+        in ("NONEXISTENT_CITATION", "UNSUPPORTED_POLICY_CLAUSE", "RATIONALE_DECISION_CONTRADICTION")
+    ]
+    assert seeded_ids  # the fixture dataset actually contains these
+
+    enforcement = resolve_enforcement(loaded_db)
+    metrics = compute_metrics(
+        loaded_db,
+        candidate_version="v2",
+        prohibited_fields=enforcement["prohibited_fields"],
+        workflow_enforce=enforcement["workflow_enforce"],
+        claim_ids=seeded_ids,
+    )
+    assert metrics["evidence_completeness"] == 1.0
+
+
+def test_release_gate_ignores_other_versions_unresolved_critical_failures(loaded_db, monkeypatch):
+    """
+    v1's own intentionally-injected weaknesses (CLAUDE.md sec29) leave
+    unresolved CRITICAL failures in the table forever -- a v1 failure must
+    never veto v2's gate just by sharing the table (regression guard for a
+    real bug: the gate's critical-failure count wasn't scoped by
+    candidate_version, so any accumulated v1 failure permanently blocked
+    every later v2 evaluation).
+    """
+    from app.models.failure import FailureModel
+    from app.traces.wrapper import new_id
+
+    loaded_db.add(
+        FailureModel(
+            failure_id=new_id("fail"),
+            failure_type="FAIRNESS",
+            severity="CRITICAL",
+            description="v1 fairness failure, never resolved",
+            affected_agent="adjudication",
+            diagnosis={"agent_version": "v1"},
+            resolved=False,
+        )
+    )
+    loaded_db.commit()
+
+    from app.config import settings as settings_module
+
+    monkeypatch.setattr(settings_module.get_settings(), "prism_evidence_required", False)
+    enforcement = resolve_enforcement(loaded_db)
+    metrics = compute_metrics(
+        loaded_db,
+        candidate_version="v2",
+        prohibited_fields=enforcement["prohibited_fields"],
+        workflow_enforce=enforcement["workflow_enforce"],
+        claim_ids=_sample_claim_ids(loaded_db),
+    )
+    result = evaluate_release_gate(loaded_db, candidate_version="v2", metrics=metrics)
+    assert "critical_abi_violations" not in result.violated_clauses
+
+
 def test_release_gate_passes_v2_when_prism_evidence_not_required(loaded_db, monkeypatch):
     from app.config import settings as settings_module
 

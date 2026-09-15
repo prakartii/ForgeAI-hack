@@ -31,9 +31,22 @@ def evaluate_release_gate(
     settings = get_settings()
     checks: list[GateCheck] = []
 
-    critical_failures = db.query(FailureModel).filter_by(severity="CRITICAL", resolved=False).count()
+    # Scoped to the candidate version being released -- a failure diagnosed
+    # against v1 (including the intentionally-injected weaknesses CLAUDE.md
+    # sec29 requires) must never block v2's own gate just by sitting
+    # unresolved in the same table. agent_version lives inside the JSON
+    # diagnosis blob (no dedicated column), so this filters in Python
+    # rather than relying on a DB-specific JSON operator.
+    unresolved_critical = db.query(FailureModel).filter_by(severity="CRITICAL", resolved=False).all()
+    critical_failures = sum(
+        1 for f in unresolved_critical if f.diagnosis.get("agent_version") == candidate_version
+    )
     checks.append(
-        GateCheck("critical_abi_violations", critical_failures == 0, f"{critical_failures} unresolved CRITICAL failures")
+        GateCheck(
+            "critical_abi_violations",
+            critical_failures == 0,
+            f"{critical_failures} unresolved CRITICAL failures for {candidate_version}",
+        )
     )
 
     pairwise = metrics.get("pairwise_consistency")

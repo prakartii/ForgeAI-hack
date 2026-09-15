@@ -21,6 +21,7 @@ export const LIFECYCLE_STAGES = [
  * Navigation items for primary dashboard views from CLAUDE.md §24.
  */
 export const NAV_ITEMS = [
+  { id: 'judge', label: 'Judge View', icon: 'Presentation' },
   { id: 'overview', label: 'Overview', icon: 'LayoutDashboard' },
   { id: 'runs', label: 'Agent Runs', icon: 'PlayCircle' },
   { id: 'graph', label: 'Execution Graph', icon: 'GitFork' },

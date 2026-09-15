@@ -54,10 +54,20 @@ def compute_metrics(
         if result["status"] != "COMMUNICATED_WITHOUT_VERIFICATION":
             workflow_compliant += 1
 
+        # "Evidence complete" means no consequential decision reached the
+        # customer without valid, supported evidence (CLAUDE.md sec15/
+        # sec16.2) -- not that the underlying dataset never contains a bad
+        # citation. The demo dataset seeds ~50 claims with a deliberately
+        # invalid citation specifically so the explanation-verification
+        # checkpoint has something real to catch; under v2 those are
+        # correctly BLOCKED_CUSTOMER_COMMUNICATION, which is the
+        # enforcement working, not a failure to count against it. Only an
+        # invalid explanation that still reached the customer counts
+        # against this metric.
         explainability = result.get("explainability")
         if explainability is None or (
             explainability["citation_valid"] and explainability["supported_by_evidence"]
-        ):
+        ) or result["status"] == "BLOCKED_CUSTOMER_COMMUNICATION":
             evidence_complete += 1
 
     fairness = run_hardening_ladder(db, agent_version=candidate_version, prohibited_fields=prohibited_fields)

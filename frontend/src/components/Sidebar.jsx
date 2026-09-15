@@ -11,6 +11,7 @@ import {
   History,
   GitCompare,
   ShieldCheck,
+  Presentation,
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -24,6 +25,7 @@ const ICON_MAP = {
   History,
   GitCompare,
   ShieldCheck,
+  Presentation,
 };
 
 export function Sidebar({ currentTab, onSelectTab }) {

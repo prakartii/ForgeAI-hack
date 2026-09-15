@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Layout } from './components/Layout';
 import { useHealth } from './hooks/useHealth';
+import { JudgeViewPage } from './pages/JudgeViewPage';
 import { OverviewPage } from './pages/OverviewPage';
 import { AgentRunsPage } from './pages/AgentRunsPage';
 import { GraphPage } from './pages/GraphPage';
@@ -24,6 +25,8 @@ export default function App() {
 
   const renderPage = () => {
     switch (currentTab) {
+      case 'judge':
+        return <JudgeViewPage onNavigate={setCurrentTab} />;
       case 'overview':
         return <OverviewPage health={health} />;
       case 'runs':
