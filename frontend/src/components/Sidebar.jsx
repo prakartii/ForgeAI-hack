@@ -59,7 +59,9 @@ export function Sidebar({ currentTab, onSelectTab }) {
         <p className="text-[11px] text-white/40 leading-relaxed">
           Demonstration environment
         </p>
-        <p className="text-[13px] text-white/85 font-serif">FairClaim</p>
+        <a href="/users" className="text-[13px] text-white/85 font-serif hover:text-white transition-colors">
+          FairClaim →
+        </a>
       </div>
     </aside>
   );

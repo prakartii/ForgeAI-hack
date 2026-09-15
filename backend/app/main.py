@@ -1,12 +1,16 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import AsyncGenerator
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.config.settings import get_settings
 from app.db.session import init_db
 from app.api.router import api_router, health_router
 
 settings = get_settings()
+
+IMAGES_DIR = Path(__file__).resolve().parents[2] / "data" / "images"
 
 
 @asynccontextmanager
@@ -55,6 +59,11 @@ app.include_router(health_router, prefix="/api")
 
 # Mount API routers under /api
 app.include_router(api_router)
+
+# Serve the demo dataset's damage photos so the customer portal can show
+# real claim evidence images, not placeholders.
+if IMAGES_DIR.exists():
+    app.mount("/media/images", StaticFiles(directory=str(IMAGES_DIR)), name="claim_images")
 
 
 @app.get("/")

@@ -51,11 +51,40 @@ export default {
           600: '#96631B',
           700: '#754C12',
         },
+        // Customer portal palette (FairClaim, the consumer-facing product) --
+        // deliberately distinct from the engineering console's audit-ledger
+        // look above: an approachable insurtech identity, not a document.
+        pcream: '#FBF9F5',
+        pink: '#20241F',
+        pinkfaint: '#6B7268',
+        pline: '#E7E3D8',
+        pteal: {
+          DEFAULT: '#0E6E62',
+          50: '#E4F0EE',
+          100: '#BFDDD7',
+          600: '#0E6E62',
+          700: '#0B5850',
+        },
+        pcoral: {
+          DEFAULT: '#D9542F',
+          50: '#FBEAE3',
+          100: '#F3C9B7',
+          600: '#D9542F',
+          700: '#B23F1F',
+        },
+        pamber: {
+          DEFAULT: '#C98A2C',
+          50: '#F9EFDD',
+          100: '#EFD6A6',
+          600: '#C98A2C',
+          700: '#A16B1C',
+        },
       },
       fontFamily: {
         serif: ['"IBM Plex Serif"', 'Georgia', 'serif'],
         sans: ['"IBM Plex Sans"', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+        portal: ['Manrope', 'system-ui', '-apple-system', 'sans-serif'],
       },
     },
   },

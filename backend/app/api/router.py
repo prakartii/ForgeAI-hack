@@ -13,10 +13,12 @@ from app.api.regressions import router as regressions_router
 from app.api.metrics import router as metrics_router
 from app.api.gates import router as gates_router
 from app.api.graph import router as graph_router
+from app.api.demo import router as demo_router
 
 # Master API Router mounted under /api
 api_router = APIRouter(prefix="/api")
 
+api_router.include_router(demo_router)
 api_router.include_router(agents_router)
 api_router.include_router(scenarios_router)
 api_router.include_router(runs_router)

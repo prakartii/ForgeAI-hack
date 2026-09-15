@@ -92,6 +92,14 @@ export const computeMetrics = (params = {}) => {
   return postJSON(`/api/metrics/compute${qs ? `?${qs}` : ''}`);
 };
 
+// --- Customer Portal (FairClaim) ---
+export const fetchSampleClaims = () => getJSON('/api/demo/claims');
+export const fetchFairnessGroups = () => getJSON('/api/demo/fairness-groups');
+export const fetchFairnessGroupVariants = (groupId) => getJSON(`/api/demo/fairness-groups/${encodeURIComponent(groupId)}/variants`);
+export const submitClaim = ({ claimId, protected: isProtected }) =>
+  postJSON(`/api/demo/submit?claim_id=${encodeURIComponent(claimId)}&protected=${isProtected}`);
+export const resolveImageUrl = (path) => (path ? `${API_BASE_URL}${path}` : null);
+
 // --- Release Gate ---
 export const fetchGateResults = () => getJSON('/api/gates');
 export const runReleaseGate = (params = {}) => {
