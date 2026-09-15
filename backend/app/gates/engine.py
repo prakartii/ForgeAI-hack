@@ -65,8 +65,24 @@ def evaluate_release_gate(
     )
 
     prism_status = metrics.get("prism_evidence", {}) or {}
-    prism_ok = (not settings.prism_evidence_required) or prism_status.get("status") == "configured"
-    checks.append(GateCheck("prism_evidence", prism_ok, prism_status.get("message", "PRISM status unknown")))
+    prism_connected = prism_status.get("status") == "configured"
+    prism_critical_failures = prism_status.get("critical_failures") or 0
+    # Configured-but-silent (no evaluated trajectories yet) still passes the
+    # connectivity half -- there's nothing to have failed. Once PRISM HAS
+    # evaluated real trajectories for us, a critical rule failure among them
+    # blocks release: PRISM's own verdict, not just its reachability, now
+    # has a say in the outcome (CLAUDE.md §21).
+    prism_ok = (not settings.prism_evidence_required) or (prism_connected and prism_critical_failures == 0)
+    if prism_status.get("evaluated_count"):
+        prism_detail = (
+            f"{prism_status['evaluated_count']} PRISM-evaluated trajectories "
+            f"(of {prism_status.get('total_on_prism')} submitted), "
+            f"{prism_critical_failures} critical rule failures, "
+            f"avg overall_score={prism_status.get('avg_overall_score')}"
+        )
+    else:
+        prism_detail = prism_status.get("message", "PRISM status unknown")
+    checks.append(GateCheck("prism_evidence", prism_ok, prism_detail))
 
     violated = [c.name for c in checks if not c.passed]
     status = "PASS" if not violated else "BLOCKED"

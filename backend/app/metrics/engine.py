@@ -79,5 +79,9 @@ def compute_metrics(
         "regression_pass_rate": regression_pass_rate,
         "challenge_robustness": fairness["challenge_robustness"],
         "challenge_robustness_by_level": fairness["per_level"],
-        "prism_evidence": get_prism_client().status(),
+        # Merges connectivity status with PRISM's own aggregated verdict
+        # (real overall_score / critical_rule_failed across our submitted
+        # trajectories) -- CLAUDE.md §21: the gate should consume what
+        # PRISM actually says, not just whether it's reachable.
+        "prism_evidence": {**get_prism_client().status(), **get_prism_client().get_verdict()},
     }

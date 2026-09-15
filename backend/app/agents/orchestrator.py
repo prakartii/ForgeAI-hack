@@ -43,6 +43,7 @@ def run_claim_pipeline(
     abi_version: Optional[str] = None,
     mutation_id: Optional[str] = None,
     submit_to_prism: bool = False,
+    use_prism_kb: bool = False,
 ) -> dict[str, Any]:
     if workflow_enforce is None:
         workflow_enforce = agent_version != "v1"
@@ -107,7 +108,7 @@ def run_claim_pipeline(
 
     wf.transition("EXPLANATION")
     with trace("explainability") as tr:
-        explainability_result = run_explainability(claim, adjudication_result)
+        explainability_result = run_explainability(claim, adjudication_result, use_prism_kb=use_prism_kb)
         tr.record_event(
             input_payload={"decision": adjudication_result["decision"]},
             output_payload=explainability_result,

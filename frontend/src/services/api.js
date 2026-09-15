@@ -31,8 +31,10 @@ async function postJSON(path, body) {
 export const fetchHealth = () => getJSON('/health');
 export const fetchAgents = () => getJSON('/api/agents');
 export const fetchPrismStatus = () => getJSON('/api/prism/status');
+export const fetchPrismVerdict = () => getJSON('/api/prism/verdict');
 export const submitRunToPrism = (runId) => postJSON(`/api/prism/runs/${encodeURIComponent(runId)}/submit`);
 export const fetchPrismEvidence = (runId) => getJSON(`/api/prism/runs/${encodeURIComponent(runId)}/evidence`);
+export const reevaluateRunInPrism = (runId) => postJSON(`/api/prism/runs/${encodeURIComponent(runId)}/reevaluate`);
 export const fetchGraphStatus = () => getJSON('/api/graph/status');
 export const fetchCausalGraph = (claimId) => getJSON(`/api/graph/causal/${encodeURIComponent(claimId)}`);
 

@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Eye, UploadCloud, FileSearch } from 'lucide-react';
-import { fetchPrismEvidence, fetchPrismStatus, fetchRuns, submitRunToPrism } from '../services/api';
+import { Eye, UploadCloud, FileSearch, RefreshCw, ShieldCheck } from 'lucide-react';
+import {
+  fetchPrismEvidence, fetchPrismStatus, fetchPrismVerdict, fetchRuns,
+  reevaluateRunInPrism, submitRunToPrism,
+} from '../services/api';
 import { ActionButton, Badge, Card, ErrorNote } from '../components/ui';
 
 export function PrismEvidencePage() {
   const [prismStatus, setPrismStatus] = useState(null);
+  const [verdict, setVerdict] = useState(null);
   const [runs, setRuns] = useState([]);
   const [busyRunId, setBusyRunId] = useState(null);
   const [evidenceByRun, setEvidenceByRun] = useState({});
@@ -12,6 +16,7 @@ export function PrismEvidencePage() {
 
   const load = () => {
     fetchPrismStatus().then(setPrismStatus).catch(() => null);
+    fetchPrismVerdict().then(setVerdict).catch(() => null);
     fetchRuns().then(setRuns).catch(() => null);
   };
 
@@ -45,6 +50,24 @@ export function PrismEvidencePage() {
     }
   };
 
+  const handleReevaluate = async (runId) => {
+    setBusyRunId(runId);
+    try {
+      await reevaluateRunInPrism(runId);
+      // PRISM evaluates asynchronously (returns {"status": "evaluating"}
+      // immediately) -- give it a moment, then pull the refreshed score.
+      await new Promise((resolve) => setTimeout(resolve, 4000));
+      const evidence = await fetchPrismEvidence(runId);
+      setEvidenceByRun((prev) => ({ ...prev, [runId]: evidence }));
+      setError(null);
+      fetchPrismVerdict().then(setVerdict).catch(() => null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyRunId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -68,6 +91,36 @@ export function PrismEvidencePage() {
           </blockquote>
         )}
       </Card>
+
+      {configured && verdict?.total_on_prism != null && (
+        <Card title="PRISM's own governance verdict" icon={ShieldCheck} tag="GET /api/prism/verdict">
+          <p className="text-[13px] text-ink-soft mb-4">
+            Real, PRISM-computed scores across our submitted trajectories — not our own scoring. This is the same
+            figure the Release Gate's <code className="font-mono text-[12px]">prism_evidence</code> clause now
+            actually checks, not just whether PRISM is reachable.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div>
+              <p className="text-[11px] text-ink-faint uppercase tracking-wide">Submitted to PRISM</p>
+              <p className="text-xl font-mono mt-1">{verdict.total_on_prism}</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-ink-faint uppercase tracking-wide">Sampled &amp; evaluated</p>
+              <p className="text-xl font-mono mt-1">{verdict.evaluated_count} / {verdict.sample_size}</p>
+            </div>
+            <div>
+              <p className="text-[11px] text-ink-faint uppercase tracking-wide">Critical rule failures</p>
+              <p className={`text-xl font-mono mt-1 ${verdict.critical_failures > 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+                {verdict.critical_failures}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] text-ink-faint uppercase tracking-wide">Avg overall_score</p>
+              <p className="text-xl font-mono mt-1">{verdict.avg_overall_score ?? '—'}</p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <Card title="Run to PRISM session correlation" tag="agent_runs.prism_session_id" noPadding>
         <p className="text-[13px] text-ink-soft p-5 pb-0">
@@ -106,9 +159,14 @@ export function PrismEvidencePage() {
                             <UploadCloud className="w-3 h-3" /> Submit
                           </ActionButton>
                           {run.prism_session_id && (
-                            <ActionButton variant="secondary" loading={busyRunId === run.run_id} onClick={() => handleFetchEvidence(run.run_id)}>
-                              <FileSearch className="w-3 h-3" /> Fetch evidence
-                            </ActionButton>
+                            <>
+                              <ActionButton variant="secondary" loading={busyRunId === run.run_id} onClick={() => handleFetchEvidence(run.run_id)}>
+                                <FileSearch className="w-3 h-3" /> Fetch evidence
+                              </ActionButton>
+                              <ActionButton variant="secondary" loading={busyRunId === run.run_id} onClick={() => handleReevaluate(run.run_id)}>
+                                <RefreshCw className="w-3 h-3" /> Re-evaluate
+                              </ActionButton>
+                            </>
                           )}
                         </div>
                       )}

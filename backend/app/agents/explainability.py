@@ -14,7 +14,7 @@ than a hypothetical one. It is independent of agent version: catching
 these is the Enforcement Layer's job (§16.2), not something this agent
 hides.
 """
-from typing import Any
+from typing import Any, Optional
 
 from app.agents.adjudication import PROXY_FIELDS
 from app.models.domain import ClaimModel
@@ -25,6 +25,7 @@ def run_explainability(
     adjudication_result: dict[str, Any],
     *,
     inject_failure: bool = True,
+    use_prism_kb: bool = False,
 ) -> dict[str, Any]:
     context = adjudication_result["context_used"]
     decision = adjudication_result["decision"]
@@ -60,4 +61,28 @@ def run_explainability(
         "citation_valid": citation_valid,
         "supported_by_evidence": supported_by_evidence,
         "fabricated_claim": fabricated_claim,
+        "prism_kb_grounding": _prism_kb_grounding(decision, reason) if use_prism_kb else None,
     }
+
+
+def _prism_kb_grounding(decision: str, reason: str) -> Optional[list[dict[str, Any]]]:
+    """Real retrieval against PRISM's Knowledge Base (run POST
+    /api/prism/kb/seed once first so there's something to retrieve) --
+    grounds the explanation in the actual compiled ABI text PRISM holds,
+    rather than only internal context keys. None (not an empty list, not
+    invented content) when PRISM isn't configured or nothing was seeded;
+    CLAUDE.md §31 forbids treating that as "no grounding needed" and
+    faking a citation instead."""
+    from app.prism import get_prism_client
+
+    client = get_prism_client()
+    if not client.is_configured:
+        return None
+    try:
+        results = client.kb_search(f"{decision} {reason.replace('_', ' ').lower()}", limit=2)
+    except Exception:
+        return None
+    return [
+        {"document": r.get("doc_name"), "excerpt": (r.get("content") or "")[:400], "relevance_score": r.get("relevance_score")}
+        for r in results
+    ] or None
