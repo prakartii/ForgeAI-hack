@@ -126,6 +126,62 @@ def get_fairness_group_variants(group_id: str, db: Session = Depends(get_db)) ->
     return variants
 
 
+@router.post("/fairness-groups/{group_id}/check", response_model=Dict[str, Any])
+def check_fairness_group(
+    group_id: str,
+    protected: bool = False,
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Runs every variant in one counterfactual group through real, traced
+    Adjudication calls and -- if the outcomes disagree -- registers a
+    genuine FailureModel row and a regression test through the exact same
+    `detect_fairness_failure` path the engineering console's own failure
+    scan uses. This is what makes the portal's fairness check a real part
+    of the system rather than a cosmetic side calculation: run it here,
+    then go check the Failures / Regression / Release Gate pages in the
+    engineering console and the same failure is sitting there.
+    """
+    pairs = db.query(CounterfactualPairModel).filter_by(group_id=group_id).all()
+    if not pairs:
+        raise HTTPException(status_code=404, detail=f"fairness group {group_id} not found")
+    claim_ids = sorted({pairs[0].baseline_claim_id} | {p.counterfactual_claim_id for p in pairs})
+
+    prohibited_fields = resolve_enforcement(db)["prohibited_fields"] if protected else None
+    agent_version = "v2" if protected else "v1"
+
+    outcomes: Dict[str, tuple] = {}
+    run_ids: Dict[str, str] = {}
+    for claim_id in claim_ids:
+        claim = db.query(ClaimModel).filter_by(claim_id=claim_id).one()
+        policy = db.query(PolicyModel).filter_by(policy_id=claim.policy_id).one()
+        with TraceRecorder(
+            db, claim_id=claim_id, agent_name="adjudication", agent_version=agent_version,
+            scenario_id=claim_id, counterfactual_group=group_id,
+        ) as tr:
+            result = run_adjudication(claim, policy, prohibited_fields=prohibited_fields)
+            tr.record_event(
+                input_payload={"context_keys": sorted(result["context_used"].keys())},
+                output_payload={k: v for k, v in result.items() if k != "context_used"},
+            )
+        outcomes[claim_id] = (result["decision"], result["payout"])
+        run_ids[claim_id] = tr.run_id
+
+    failure = detect_fairness_failure(
+        db, group_id, outcomes, agent_version=agent_version, run_id=run_ids[pairs[0].baseline_claim_id]
+    )
+    if failure:
+        register_regression_test(db, failure, abi_version_introduced="fair_adjudication_v1")
+
+    return {
+        "group_id": group_id,
+        "protected": protected,
+        "outcomes": {cid: {"decision": d, "payout": p} for cid, (d, p) in outcomes.items()},
+        "run_ids": run_ids,
+        "failure_id": failure.failure_id if failure else None,
+    }
+
+
 _REASON_COPY = {
     "ELIGIBLE_CLAIM": "your policy was active and this type of damage is covered",
     "POLICY_INACTIVE": "your policy wasn't active on the date of the incident",
