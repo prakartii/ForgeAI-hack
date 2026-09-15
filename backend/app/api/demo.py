@@ -6,17 +6,24 @@ engineering console uses, but returns claimant-friendly shapes (plain
 decision/payout/explanation, no internal IDs or ABI plumbing).
 """
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
+from sqlalchemy.sql.expression import func
 
+from app.agents.adjudication import run_adjudication
 from app.db.session import get_db
 from app.enforcement.engine import resolve_enforcement
+from app.failures.detectors import detect_fairness_failure
 from app.models.domain import ClaimModel, DocumentModel, PolicyModel
 from app.models.scenario import CounterfactualPairModel, ScenarioModel
+from app.models.trace import AgentRunModel
 from app.agents.orchestrator import run_claim_pipeline
+from app.regression.engine import register_regression_test
+from app.traces.wrapper import TraceRecorder
 
 router = APIRouter(prefix="/demo", tags=["Customer Portal"])
 
